@@ -1,12 +1,53 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import React, { useState, useEffect } from 'react';
+import Navbar from '@/components/layout/Navbar';
+import Footer from '@/components/layout/Footer';
+import HeroSection from '@/components/home/HeroSection';
+import HowItWorksSection from '@/components/home/HowItWorksSection';
+import WhyItWorksSection from '@/components/home/WhyItWorksSection';
+import FeaturesSection from '@/components/home/FeaturesSection';
+import TestimonialsSection from '@/components/home/TestimonialsSection';
+import PricingSection from '@/components/home/PricingSection';
+import CTASection from '@/components/home/CTASection';
 
 const Index = () => {
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && systemTheme);
+    
+    setIsDarkMode(shouldUseDark);
+    document.documentElement.classList.toggle('dark', shouldUseDark);
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDarkMode;
+    setIsDarkMode(newTheme);
+    document.documentElement.classList.toggle('dark', newTheme);
+    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <Navbar 
+        isAuthenticated={false} 
+        onToggleTheme={toggleTheme} 
+        isDarkMode={isDarkMode} 
+      />
+      
+      <main>
+        <HeroSection />
+        <HowItWorksSection />
+        <WhyItWorksSection />
+        <FeaturesSection />
+        <TestimonialsSection />
+        <PricingSection />
+        <CTASection />
+      </main>
+      
+      <Footer />
     </div>
   );
 };
