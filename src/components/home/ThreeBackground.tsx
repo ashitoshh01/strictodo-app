@@ -32,7 +32,7 @@ const AnimatedSphere = ({ position, color }: { position: [number, number, number
   return (
     <FloatingObject position={position}>
       <Sphere ref={meshRef} args={[0.5, 32, 32]}>
-        <meshStandardMaterial color={color} transparent opacity={0.8} />
+        <meshStandardMaterial color={color} transparent={true} opacity={0.8} />
       </Sphere>
     </FloatingObject>
   );
@@ -51,7 +51,7 @@ const AnimatedBox = ({ position, color }: { position: [number, number, number], 
   return (
     <FloatingObject position={position}>
       <Box ref={meshRef} args={[0.8, 0.8, 0.8]}>
-        <meshStandardMaterial color={color} transparent opacity={0.7} />
+        <meshStandardMaterial color={color} transparent={true} opacity={0.7} />
       </Box>
     </FloatingObject>
   );
@@ -70,7 +70,7 @@ const AnimatedTorus = ({ position, color }: { position: [number, number, number]
   return (
     <FloatingObject position={position}>
       <Torus ref={meshRef} args={[0.6, 0.2, 16, 32]}>
-        <meshStandardMaterial color={color} transparent opacity={0.6} />
+        <meshStandardMaterial color={color} transparent={true} opacity={0.6} />
       </Torus>
     </FloatingObject>
   );
