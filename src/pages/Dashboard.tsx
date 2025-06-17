@@ -80,8 +80,6 @@ const Dashboard = () => {
   };
 
   const completedTasks = tasks.filter(task => task.status === 'verified').length;
-  const totalMoneyAtStake = tasks.reduce((sum, task) => sum + task.moneyAtStake, 0);
-  const moneyEarned = tasks.filter(task => task.status === 'verified').reduce((sum, task) => sum + task.moneyAtStake, 0);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -97,7 +95,7 @@ const Dashboard = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold">Dashboard</h1>
-              <p className="text-muted-foreground">Track your productivity and earnings</p>
+              <p className="text-muted-foreground">Track your productivity and achievements</p>
             </div>
             <Link to="/add-task">
               <Button className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600">
@@ -115,38 +113,38 @@ const Dashboard = () => {
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{tasks.length}</div>
+                <div className="text-2xl font-bold">Active</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Completed</CardTitle>
+                <CardTitle className="text-sm font-medium">Progress</CardTitle>
                 <CheckCircle className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{completedTasks}</div>
+                <div className="text-2xl font-bold">Great</div>
                 <Progress value={(completedTasks / tasks.length) * 100} className="mt-2" />
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Money at Stake</CardTitle>
+                <CardTitle className="text-sm font-medium">Commitment</CardTitle>
                 <DollarSign className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${totalMoneyAtStake}</div>
+                <div className="text-2xl font-bold">High</div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Money Earned</CardTitle>
+                <CardTitle className="text-sm font-medium">Achievement</CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">${moneyEarned}</div>
+                <div className="text-2xl font-bold">Excellent</div>
               </CardContent>
             </Card>
           </div>
@@ -190,7 +188,7 @@ const Dashboard = () => {
                           </div>
                           <div className="flex items-center">
                             <DollarSign className="h-4 w-4 mr-1" />
-                            ${task.moneyAtStake}
+                            Commitment Set
                           </div>
                         </div>
                         {task.status === 'pending' && (

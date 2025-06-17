@@ -28,7 +28,7 @@ const HowItWorksSection = () => {
     <section id="how-it-works" className="py-20 bg-background">
       <div className="container mx-auto px-4">
         <div className="text-center space-y-4 mb-16">
-          <h2 className="text-3xl lg:text-4xl font-bold">How It Works</h2>
+          <h2 className="text-3xl lg:text-4xl font-bold text-foreground">How It Works</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Simple 3-step process that turns your procrastination into productivity
           </p>
@@ -50,13 +50,8 @@ const HowItWorksSection = () => {
                   <step.icon className="h-8 w-8 text-white" />
                 </div>
                 
-                <h3 className="text-xl font-bold mb-4">{step.title}</h3>
+                <h3 className="text-xl font-bold mb-4 text-foreground">{step.title}</h3>
                 <p className="text-muted-foreground leading-relaxed">{step.description}</p>
-                
-                {/* Step Number */}
-                <div className="absolute -top-3 -left-3 w-8 h-8 bg-gradient-to-r from-gray-800 to-gray-900 dark:from-gray-100 dark:to-gray-200 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-bold text-white dark:text-black">{index + 1}</span>
-                </div>
               </div>
             </div>
           ))}
@@ -69,9 +64,9 @@ const HowItWorksSection = () => {
               <Trophy className="h-5 w-5" />
               <span className="font-semibold">Success Story</span>
             </div>
-            <p className="text-lg font-medium">
-              "I bet $100 on finishing my thesis chapter. Not only did I complete it 2 days early, 
-              but I also earned a $50 Amazon gift card as a bonus reward!"
+            <p className="text-lg font-medium text-foreground">
+              "I bet money on finishing my thesis chapter. Not only did I complete it early, 
+              but I also earned a bonus reward!"
             </p>
             <p className="text-muted-foreground">- Sarah M., Graduate Student</p>
           </div>
