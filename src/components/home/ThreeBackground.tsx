@@ -31,9 +31,10 @@ const AnimatedSphere = ({ position, color }: { position: [number, number, number
 
   return (
     <FloatingObject position={position}>
-      <Sphere ref={meshRef} args={[0.5, 32, 32]}>
-        <meshStandardMaterial color={color} transparent={true} opacity={0.8} />
-      </Sphere>
+      <mesh ref={meshRef}>
+        <sphereGeometry args={[0.5, 32, 32]} />
+        <meshStandardMaterial color={color} transparent opacity={0.8} />
+      </mesh>
     </FloatingObject>
   );
 };
@@ -50,9 +51,10 @@ const AnimatedBox = ({ position, color }: { position: [number, number, number], 
 
   return (
     <FloatingObject position={position}>
-      <Box ref={meshRef} args={[0.8, 0.8, 0.8]}>
-        <meshStandardMaterial color={color} transparent={true} opacity={0.7} />
-      </Box>
+      <mesh ref={meshRef}>
+        <boxGeometry args={[0.8, 0.8, 0.8]} />
+        <meshStandardMaterial color={color} transparent opacity={0.7} />
+      </mesh>
     </FloatingObject>
   );
 };
@@ -69,9 +71,10 @@ const AnimatedTorus = ({ position, color }: { position: [number, number, number]
 
   return (
     <FloatingObject position={position}>
-      <Torus ref={meshRef} args={[0.6, 0.2, 16, 32]}>
-        <meshStandardMaterial color={color} transparent={true} opacity={0.6} />
-      </Torus>
+      <mesh ref={meshRef}>
+        <torusGeometry args={[0.6, 0.2, 16, 32]} />
+        <meshStandardMaterial color={color} transparent opacity={0.6} />
+      </mesh>
     </FloatingObject>
   );
 };
@@ -79,7 +82,14 @@ const AnimatedTorus = ({ position, color }: { position: [number, number, number]
 const ThreeBackground = () => {
   return (
     <div className="absolute inset-0 -z-10">
-      <Canvas camera={{ position: [0, 0, 5], fov: 60 }}>
+      <Canvas 
+        camera={{ position: [0, 0, 5], fov: 60 }}
+        gl={{ 
+          antialias: true,
+          alpha: true,
+          powerPreference: "high-performance"
+        }}
+      >
         <ambientLight intensity={0.5} />
         <directionalLight position={[5, 5, 5]} intensity={0.8} />
         
