@@ -1,24 +1,43 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Mail, User, Lock, Palette } from 'lucide-react';
+import { Eye, EyeOff, Mail, User, Lock, Palette, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useAuth } from '@/contexts/AuthContext';
 
+declare global {
+  interface Window {
+    hcaptcha: any;
+  }
+}
+
+interface SignUpFormData {
+  name: string;
+  email: string;
+  password: string;
+  darkMode: boolean;
+}
+
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    darkMode: false
-  });
   const [isLoading, setIsLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaRef = useRef<string | null>(null);
+  
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<SignUpFormData>({
+    defaultValues: {
+      name: '',
+      email: '',
+      password: '',
+      darkMode: false
+    }
+  });
   
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -29,22 +48,63 @@ const SignUp = () => {
     }
   }, [user, navigate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    // Load hCaptcha script
+    const script = document.createElement('script');
+    script.src = 'https://js.hcaptcha.com/1/api.js';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+      // Render hCaptcha widget
+      if (window.hcaptcha && captchaRef.current) {
+        window.hcaptcha.render(captchaRef.current, {
+          sitekey: 'your-hcaptcha-site-key', // Replace with your actual site key
+          callback: (token: string) => {
+            setCaptchaToken(token);
+          },
+          'expired-callback': () => {
+            setCaptchaToken(null);
+          },
+          'error-callback': () => {
+            setCaptchaToken(null);
+          }
+        });
+      }
+    };
+
+    return () => {
+      if (document.head.contains(script)) {
+        document.head.removeChild(script);
+      }
+    };
+  }, []);
+
+  const onSubmit = async (data: SignUpFormData) => {
+    if (!captchaToken) {
+      alert('Please complete the CAPTCHA verification');
+      return;
+    }
+
     setIsLoading(true);
     
-    const { error } = await signUp(formData.email, formData.password, formData.name);
-    
-    if (!error) {
-      // User will need to confirm their email, so redirect to sign in
-      navigate('/signin');
+    try {
+      const { error } = await signUp(data.email, data.password, data.name, captchaToken);
+      
+      if (!error) {
+        navigate('/signin');
+      }
+    } catch (error) {
+      console.error('Sign up error:', error);
+    } finally {
+      setIsLoading(false);
+      // Reset CAPTCHA
+      if (window.hcaptcha && captchaRef.current) {
+        window.hcaptcha.reset();
+        setCaptchaToken(null);
+      }
     }
-    
-    setIsLoading(false);
-  };
-
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
@@ -102,7 +162,7 @@ const SignUp = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Email Sign Up */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Full Name</Label>
                 <div className="relative">
@@ -112,12 +172,13 @@ const SignUp = () => {
                     type="text"
                     placeholder="Enter your full name"
                     className="pl-10"
-                    value={formData.name}
-                    onChange={(e) => handleInputChange('name', e.target.value)}
-                    required
+                    {...register('name', { required: 'Full name is required' })}
                     disabled={isLoading}
                   />
                 </div>
+                {errors.name && (
+                  <p className="text-sm text-red-500">{errors.name.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -129,12 +190,19 @@ const SignUp = () => {
                     type="email"
                     placeholder="Enter your email"
                     className="pl-10"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('email', e.target.value)}
-                    required
+                    {...register('email', { 
+                      required: 'Email is required',
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Invalid email address'
+                      }
+                    })}
                     disabled={isLoading}
                   />
                 </div>
+                {errors.email && (
+                  <p className="text-sm text-red-500">{errors.email.message}</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -146,9 +214,13 @@ const SignUp = () => {
                     type={showPassword ? "text" : "password"}
                     placeholder="Create a password"
                     className="pl-10 pr-10"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange('password', e.target.value)}
-                    required
+                    {...register('password', { 
+                      required: 'Password is required',
+                      minLength: {
+                        value: 6,
+                        message: 'Password must be at least 6 characters'
+                      }
+                    })}
                     disabled={isLoading}
                   />
                   <button
@@ -160,6 +232,9 @@ const SignUp = () => {
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="text-sm text-red-500">{errors.password.message}</p>
+                )}
               </div>
 
               <div className="flex items-center space-x-3">
@@ -169,16 +244,31 @@ const SignUp = () => {
                 </Label>
                 <Switch
                   id="darkMode"
-                  checked={formData.darkMode}
-                  onCheckedChange={(checked) => handleInputChange('darkMode', checked)}
+                  checked={watch('darkMode')}
+                  onCheckedChange={(checked) => setValue('darkMode', checked)}
                   disabled={isLoading}
+                />
+              </div>
+
+              {/* CAPTCHA */}
+              <div className="space-y-2">
+                <Label className="flex items-center space-x-2">
+                  <Shield className="h-4 w-4 text-muted-foreground" />
+                  <span>Security Verification</span>
+                </Label>
+                <div 
+                  ref={(el) => {
+                    if (el) captchaRef.current = el.id || 'hcaptcha-widget';
+                  }}
+                  id="hcaptcha-widget"
+                  className="flex justify-center"
                 />
               </div>
 
               <Button 
                 type="submit" 
                 className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
-                disabled={isLoading}
+                disabled={isLoading || !captchaToken}
               >
                 {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
