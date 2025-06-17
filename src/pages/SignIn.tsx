@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 const SignIn = () => {
@@ -48,6 +48,15 @@ const SignIn = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 flex items-center justify-center p-4">
+      {/* Back Arrow */}
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="text-sm">Back to Home</span>
+      </Link>
+
       <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         {/* Left Side - Branding */}
         <div className="hidden lg:block space-y-8">

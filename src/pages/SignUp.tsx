@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Mail, User, Lock, Palette, Shield } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
+import { Eye, EyeOff, Mail, User, Lock, Shield, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 declare global {
@@ -21,7 +20,6 @@ interface SignUpFormData {
   name: string;
   email: string;
   password: string;
-  darkMode: boolean;
 }
 
 const SignUp = () => {
@@ -30,12 +28,11 @@ const SignUp = () => {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaRef = useRef<string | null>(null);
   
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<SignUpFormData>({
+  const { register, handleSubmit, formState: { errors } } = useForm<SignUpFormData>({
     defaultValues: {
       name: '',
       email: '',
-      password: '',
-      darkMode: false
+      password: ''
     }
   });
   
@@ -109,6 +106,15 @@ const SignUp = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 flex items-center justify-center p-4">
+      {/* Back Arrow */}
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 flex items-center space-x-2 text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="text-sm">Back to Home</span>
+      </Link>
+
       <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         {/* Left Side - Branding */}
         <div className="hidden lg:block space-y-8">
@@ -235,19 +241,6 @@ const SignUp = () => {
                 {errors.password && (
                   <p className="text-sm text-red-500">{errors.password.message}</p>
                 )}
-              </div>
-
-              <div className="flex items-center space-x-3">
-                <Palette className="h-4 w-4 text-muted-foreground" />
-                <Label htmlFor="darkMode" className="text-sm font-normal">
-                  Enable Dark Mode
-                </Label>
-                <Switch
-                  id="darkMode"
-                  checked={watch('darkMode')}
-                  onCheckedChange={(checked) => setValue('darkMode', checked)}
-                  disabled={isLoading}
-                />
               </div>
 
               {/* CAPTCHA */}
