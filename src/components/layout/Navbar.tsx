@@ -10,15 +10,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface NavbarProps {
-  isAuthenticated?: boolean;
   onToggleTheme?: () => void;
   isDarkMode?: boolean;
 }
 
-const Navbar = ({ isAuthenticated = false, onToggleTheme, isDarkMode = false }: NavbarProps) => {
+const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
   const location = useLocation();
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
@@ -33,7 +38,7 @@ const Navbar = ({ isAuthenticated = false, onToggleTheme, isDarkMode = false }: 
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
-          {isAuthenticated ? (
+          {user ? (
             <>
               <Link 
                 to="/dashboard" 
@@ -81,7 +86,7 @@ const Navbar = ({ isAuthenticated = false, onToggleTheme, isDarkMode = false }: 
             {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </Button>
 
-          {isAuthenticated ? (
+          {user ? (
             /* User Menu */
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -90,6 +95,12 @@ const Navbar = ({ isAuthenticated = false, onToggleTheme, isDarkMode = false }: 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
+                <div className="flex items-center justify-start gap-2 p-2">
+                  <div className="flex flex-col space-y-1 leading-none">
+                    <p className="font-medium">{user.email}</p>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link to="/settings" className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
@@ -103,7 +114,7 @@ const Navbar = ({ isAuthenticated = false, onToggleTheme, isDarkMode = false }: 
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer">
+                <DropdownMenuItem className="cursor-pointer" onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
                 </DropdownMenuItem>
