@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -84,7 +83,6 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar 
-        isAuthenticated={true} 
         onToggleTheme={toggleTheme} 
         isDarkMode={isDarkMode} 
       />

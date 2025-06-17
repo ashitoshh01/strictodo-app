@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -201,7 +200,6 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar 
-        isAuthenticated={true} 
         onToggleTheme={toggleTheme} 
         isDarkMode={isDarkMode} 
       />

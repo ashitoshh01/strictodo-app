@@ -32,7 +32,6 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar 
-        isAuthenticated={false} 
         onToggleTheme={toggleTheme} 
         isDarkMode={isDarkMode} 
       />
