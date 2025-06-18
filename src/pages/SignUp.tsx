@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Mail, User, Lock, Shield, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, User, Lock, Shield, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 declare global {
   interface Window {
-    hcaptcha: any;
+    turnstile: any;
   }
 }
 
@@ -20,24 +22,33 @@ interface SignUpFormData {
   name: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaRef = useRef<string | null>(null);
+  const { toast } = useToast();
   
-  const { register, handleSubmit, formState: { errors } } = useForm<SignUpFormData>({
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<SignUpFormData>({
     defaultValues: {
       name: '',
       email: '',
-      password: ''
+      password: '',
+      confirmPassword: ''
     }
   });
   
-  const { signUp, user } = useAuth();
+  const { signUp, signInWithOAuth, user } = useAuth();
   const navigate = useNavigate();
+  
+  const watchedEmail = watch('email');
+  const watchedPassword = watch('password');
+  const watchedConfirmPassword = watch('confirmPassword');
 
   useEffect(() => {
     if (user) {
@@ -46,23 +57,20 @@ const SignUp = () => {
   }, [user, navigate]);
 
   useEffect(() => {
-    // Load hCaptcha script
+    // Load Cloudflare Turnstile script
     const script = document.createElement('script');
-    script.src = 'https://js.hcaptcha.com/1/api.js';
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
 
     script.onload = () => {
-      // Render hCaptcha widget
-      if (window.hcaptcha && captchaRef.current) {
-        window.hcaptcha.render(captchaRef.current, {
-          sitekey: 'your-hcaptcha-site-key', // Replace with your actual site key
+      // Render Turnstile widget
+      if (window.turnstile && captchaRef.current) {
+        window.turnstile.render(captchaRef.current, {
+          sitekey: '0x4AAAAAAAksKI_uKvx5d5gx', // Replace with your actual Turnstile site key
           callback: (token: string) => {
             setCaptchaToken(token);
-          },
-          'expired-callback': () => {
-            setCaptchaToken(null);
           },
           'error-callback': () => {
             setCaptchaToken(null);
@@ -78,9 +86,66 @@ const SignUp = () => {
     };
   }, []);
 
+  const handleVerifyEmail = async () => {
+    if (!watchedEmail) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: watchedEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/signup?verified=true`,
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        setIsVerificationSent(true);
+        toast({
+          title: "Verification email sent",
+          description: "Check your email for the verification link.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const onSubmit = async (data: SignUpFormData) => {
+    if (data.password !== data.confirmPassword) {
+      toast({
+        title: "Password mismatch",
+        description: "Passwords do not match. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!captchaToken) {
-      alert('Please complete the CAPTCHA verification');
+      toast({
+        title: "Verification required",
+        description: "Please complete the security verification.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -97,11 +162,23 @@ const SignUp = () => {
     } finally {
       setIsLoading(false);
       // Reset CAPTCHA
-      if (window.hcaptcha && captchaRef.current) {
-        window.hcaptcha.reset();
+      if (window.turnstile && captchaRef.current) {
+        window.turnstile.reset();
         setCaptchaToken(null);
       }
     }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    await signInWithOAuth('google');
+    setIsLoading(false);
+  };
+
+  const handleGitHubSignUp = async () => {
+    setIsLoading(true);
+    await signInWithOAuth('github');
+    setIsLoading(false);
   };
 
   return (
@@ -209,6 +286,28 @@ const SignUp = () => {
                 {errors.email && (
                   <p className="text-sm text-red-500">{errors.email.message}</p>
                 )}
+                
+                {/* Verify Email Button */}
+                {watchedEmail && !isVerificationSent && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleVerifyEmail}
+                    disabled={isLoading}
+                    className="w-full mt-2"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Verify Email
+                  </Button>
+                )}
+                
+                {isVerificationSent && (
+                  <div className="flex items-center space-x-2 text-green-600 text-sm mt-2">
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Verification email sent!</span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -243,7 +342,36 @@ const SignUp = () => {
                 )}
               </div>
 
-              {/* CAPTCHA */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Re-enter Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Re-enter your password"
+                    className="pl-10 pr-10"
+                    {...register('confirmPassword', { 
+                      required: 'Please confirm your password',
+                      validate: (value) => value === watchedPassword || 'Passwords do not match'
+                    })}
+                    disabled={isLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-3 text-muted-foreground hover:text-foreground"
+                    disabled={isLoading}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {errors.confirmPassword && (
+                  <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
+                )}
+              </div>
+
+              {/* Turnstile CAPTCHA */}
               <div className="space-y-2">
                 <Label className="flex items-center space-x-2">
                   <Shield className="h-4 w-4 text-muted-foreground" />
@@ -251,9 +379,9 @@ const SignUp = () => {
                 </Label>
                 <div 
                   ref={(el) => {
-                    if (el) captchaRef.current = el.id || 'hcaptcha-widget';
+                    if (el) captchaRef.current = el.id || 'turnstile-widget';
                   }}
-                  id="hcaptcha-widget"
+                  id="turnstile-widget"
                   className="flex justify-center"
                 />
               </div>
@@ -278,7 +406,13 @@ const SignUp = () => {
 
             {/* Social Sign Up */}
             <div className="space-y-3">
-              <Button variant="outline" className="w-full" type="button" disabled={isLoading}>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                type="button" 
+                disabled={isLoading}
+                onClick={handleGoogleSignUp}
+              >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                   <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -287,11 +421,17 @@ const SignUp = () => {
                 </svg>
                 Continue with Google
               </Button>
-              <Button variant="outline" className="w-full" type="button" disabled={isLoading}>
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                type="button" 
+                disabled={isLoading}
+                onClick={handleGitHubSignUp}
+              >
                 <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                  <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
                 </svg>
-                Continue with Apple
+                Continue with GitHub
               </Button>
             </div>
 
