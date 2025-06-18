@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Mail, User, Lock, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Eye, EyeOff, Mail, User, Lock, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface SignUpFormData {
@@ -23,7 +22,6 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isVerificationSent, setIsVerificationSent] = useState(false);
   const { toast } = useToast();
   
   const { register, handleSubmit, watch, formState: { errors } } = useForm<SignUpFormData>({
@@ -38,7 +36,6 @@ const SignUp = () => {
   const { signUp, signInWithOAuth, user } = useAuth();
   const navigate = useNavigate();
   
-  const watchedEmail = watch('email');
   const watchedPassword = watch('password');
 
   useEffect(() => {
@@ -46,50 +43,6 @@ const SignUp = () => {
       navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
-
-  const handleVerifyEmail = async () => {
-    if (!watchedEmail) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: watchedEmail,
-        options: {
-          emailRedirectTo: `${window.location.origin}/signup?verified=true`,
-        }
-      });
-
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        setIsVerificationSent(true);
-        toast({
-          title: "Verification email sent",
-          description: "Check your email for the verification link.",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const onSubmit = async (data: SignUpFormData) => {
     if (data.password !== data.confirmPassword) {
@@ -232,28 +185,6 @@ const SignUp = () => {
                 </div>
                 {errors.email && (
                   <p className="text-sm text-red-500">{errors.email.message}</p>
-                )}
-                
-                {/* Verify Email Button */}
-                {watchedEmail && !isVerificationSent && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleVerifyEmail}
-                    disabled={isLoading}
-                    className="w-full mt-2"
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Verify Email
-                  </Button>
-                )}
-                
-                {isVerificationSent && (
-                  <div className="flex items-center space-x-2 text-green-600 text-sm mt-2">
-                    <CheckCircle className="h-4 w-4" />
-                    <span>Verification email sent!</span>
-                  </div>
                 )}
               </div>
 
