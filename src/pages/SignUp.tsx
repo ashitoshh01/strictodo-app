@@ -31,7 +31,9 @@ const SignUp = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isVerificationSent, setIsVerificationSent] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
-  const captchaRef = useRef<string | null>(null);
+  const [isCaptchaLoaded, setIsCaptchaLoaded] = useState(false);
+  const captchaRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
   const { toast } = useToast();
   
   const { register, handleSubmit, watch, formState: { errors } } = useForm<SignUpFormData>({
@@ -48,7 +50,6 @@ const SignUp = () => {
   
   const watchedEmail = watch('email');
   const watchedPassword = watch('password');
-  const watchedConfirmPassword = watch('confirmPassword');
 
   useEffect(() => {
     if (user) {
@@ -62,29 +63,63 @@ const SignUp = () => {
     script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
     script.async = true;
     script.defer = true;
-    document.head.appendChild(script);
-
+    
     script.onload = () => {
-      // Render Turnstile widget
-      if (window.turnstile && captchaRef.current) {
-        window.turnstile.render(captchaRef.current, {
-          sitekey: '0x4AAAAAAAksKI_uKvx5d5gx', // Replace with your actual Turnstile site key
-          callback: (token: string) => {
-            setCaptchaToken(token);
-          },
-          'error-callback': () => {
-            setCaptchaToken(null);
+      console.log('Turnstile script loaded');
+      setIsCaptchaLoaded(true);
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        if (window.turnstile && captchaRef.current) {
+          try {
+            widgetIdRef.current = window.turnstile.render(captchaRef.current, {
+              sitekey: '0x4AAAAAAAksKI_uKvx5d5gx',
+              callback: (token: string) => {
+                console.log('CAPTCHA solved:', token);
+                setCaptchaToken(token);
+              },
+              'error-callback': (error: any) => {
+                console.error('CAPTCHA error:', error);
+                setCaptchaToken(null);
+              },
+              'expired-callback': () => {
+                console.log('CAPTCHA expired');
+                setCaptchaToken(null);
+              }
+            });
+            console.log('Turnstile widget rendered with ID:', widgetIdRef.current);
+          } catch (error) {
+            console.error('Error rendering Turnstile widget:', error);
           }
-        });
-      }
+        }
+      }, 100);
+    };
+    
+    script.onerror = () => {
+      console.error('Failed to load Turnstile script');
+      toast({
+        title: "Security verification unavailable",
+        description: "Please refresh the page and try again.",
+        variant: "destructive",
+      });
     };
 
+    document.head.appendChild(script);
+
     return () => {
+      // Cleanup
+      if (widgetIdRef.current && window.turnstile) {
+        try {
+          window.turnstile.remove(widgetIdRef.current);
+        } catch (error) {
+          console.error('Error removing Turnstile widget:', error);
+        }
+      }
       if (document.head.contains(script)) {
         document.head.removeChild(script);
       }
     };
-  }, []);
+  }, [toast]);
 
   const handleVerifyEmail = async () => {
     if (!watchedEmail) {
@@ -162,9 +197,13 @@ const SignUp = () => {
     } finally {
       setIsLoading(false);
       // Reset CAPTCHA
-      if (window.turnstile && captchaRef.current) {
-        window.turnstile.reset();
-        setCaptchaToken(null);
+      if (window.turnstile && widgetIdRef.current) {
+        try {
+          window.turnstile.reset(widgetIdRef.current);
+          setCaptchaToken(null);
+        } catch (error) {
+          console.error('Error resetting CAPTCHA:', error);
+        }
       }
     }
   };
@@ -377,13 +416,18 @@ const SignUp = () => {
                   <Shield className="h-4 w-4 text-muted-foreground" />
                   <span>Security Verification</span>
                 </Label>
-                <div 
-                  ref={(el) => {
-                    if (el) captchaRef.current = el.id || 'turnstile-widget';
-                  }}
-                  id="turnstile-widget"
-                  className="flex justify-center"
-                />
+                <div className="flex justify-center min-h-[65px] border border-input rounded-md p-2">
+                  <div 
+                    ref={captchaRef}
+                    className="cf-turnstile"
+                    data-sitekey="0x4AAAAAAAksKI_uKvx5d5gx"
+                  />
+                  {!isCaptchaLoaded && (
+                    <div className="flex items-center justify-center text-sm text-muted-foreground">
+                      Loading security verification...
+                    </div>
+                  )}
+                </div>
               </div>
 
               <Button 
