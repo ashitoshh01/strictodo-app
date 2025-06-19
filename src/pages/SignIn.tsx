@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 const SignIn = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -20,14 +21,26 @@ const SignIn = () => {
   const { signIn, signInWithOAuth, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   
   const from = location.state?.from?.pathname || '/dashboard';
+  const verificationMessage = location.state?.message;
 
   useEffect(() => {
     if (user) {
       navigate(from, { replace: true });
     }
   }, [user, navigate, from]);
+
+  useEffect(() => {
+    // Show verification message if redirected from signup
+    if (verificationMessage) {
+      toast({
+        title: "Account Created Successfully!",
+        description: verificationMessage,
+      });
+    }
+  }, [verificationMessage, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,7 +124,14 @@ const SignIn = () => {
           <CardHeader className="space-y-2">
             <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
             <CardDescription className="text-center">
-              Sign in to continue your productivity journey
+              {verificationMessage ? (
+                <div className="flex items-center justify-center space-x-2 text-green-600">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>Please verify your email before signing in</span>
+                </div>
+              ) : (
+                "Sign in to continue your productivity journey"
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

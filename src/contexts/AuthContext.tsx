@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,8 +54,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const redirectUrl = `${window.location.origin}/`;
       
-      // First, try to sign up without captcha
-      let { error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -67,36 +65,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      // If captcha is required, we'll get a specific error
-      if (error && error.message.includes('captcha')) {
-        // For now, we'll disable captcha requirement by trying with an empty captcha token
-        // This is a workaround - ideally you'd implement proper captcha
-        const { error: retryError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              full_name: fullName,
-            },
-            captchaToken: '' // Empty captcha token
-          }
-        });
-        error = retryError;
-      }
-
       if (error) {
+        console.error('Sign up error:', error);
+        
         // Handle specific error cases
         if (error.message.includes('User already registered')) {
           toast({
             title: "Account already exists",
             description: "An account with this email already exists. Please sign in instead.",
-            variant: "destructive",
-          });
-        } else if (error.message.includes('captcha')) {
-          toast({
-            title: "Verification required",
-            description: "Please contact support if you continue to have issues creating an account.",
             variant: "destructive",
           });
         } else {
@@ -108,8 +84,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       } else {
         toast({
-          title: "Check your email",
-          description: "We sent you a confirmation link. Please check your email to verify your account.",
+          title: "Account created successfully!",
+          description: "Please check your email and click the verification link to activate your account.",
         });
       }
 

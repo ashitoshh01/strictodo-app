@@ -60,7 +60,14 @@ const SignUp = () => {
       const { error } = await signUp(data.email, data.password, data.name);
       
       if (!error) {
-        navigate('/signin');
+        // Redirect to sign-in page after successful account creation
+        setTimeout(() => {
+          navigate('/signin', { 
+            state: { 
+              message: "Account created! Please check your email and verify your account, then sign in." 
+            }
+          });
+        }, 2000);
       }
     } catch (error) {
       console.error('Sign up error:', error);
