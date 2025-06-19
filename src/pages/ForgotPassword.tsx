@@ -17,6 +17,16 @@ const ForgotPassword = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email) {
+      toast({
+        title: "Email required",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -25,22 +35,35 @@ const ForgotPassword = () => {
       });
 
       if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
+        console.error('Password reset error:', error);
+        
+        // Handle specific error cases
+        if (error.message.includes('rate limit')) {
+          toast({
+            title: "Too many requests",
+            description: "Please wait a few minutes before requesting another reset link.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Error sending reset email",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         setIsEmailSent(true);
         toast({
           title: "Password reset email sent",
-          description: "Check your email for the reset link.",
+          description: "Check your email for the reset link. If you don't see it, check your spam folder.",
         });
+        console.log('Password reset email sent successfully to:', email);
       }
     } catch (error: any) {
+      console.error('Unexpected error:', error);
       toast({
         title: "Error",
-        description: error.message || "An unexpected error occurred",
+        description: error.message || "An unexpected error occurred while sending the reset email",
         variant: "destructive",
       });
     } finally {
@@ -78,7 +101,10 @@ const ForgotPassword = () => {
                 <CheckCircle className="h-16 w-16 text-green-500" />
               </div>
               <p className="text-sm text-muted-foreground">
-                If an account with that email exists, you'll receive a password reset link shortly.
+                If an account with <strong>{email}</strong> exists, you'll receive a password reset link shortly.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Don't see the email? Check your spam folder or try again with a different email address.
               </p>
               <div className="space-y-2">
                 <Button
