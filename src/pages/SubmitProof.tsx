@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, CheckCircle, XCircle, FileImage, Loader2, ArrowLeft, IndianRupee } from 'lucide-react';
+import { Upload, CheckCircle, XCircle, FileImage, Loader2, ArrowLeft, IndianRupee, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTasks } from '@/hooks/useTasks';
 import { useRewards } from '@/hooks/useRewards';
@@ -111,32 +112,28 @@ const SubmitProof = () => {
     if (!task) throw new Error('Task not found');
 
     try {
-      // For PDFs, require manual verification - don't auto-approve
-      if (file.type === 'application/pdf') {
-        return {
-          success: false,
-          message: "PDF documents require manual verification. Please provide an image showing proof of completion instead."
-        };
-      }
-
-      const base64Image = await convertFileToBase64(file);
+      const base64Data = await convertFileToBase64(file);
       
-      const prompt = `Please analyze this image very carefully and determine if it shows clear evidence of completing the following specific task:
+      const prompt = `You are a strict task verification AI. Analyze this ${file.type === 'application/pdf' ? 'PDF document' : 'image'} very carefully and determine if it provides clear, direct evidence of completing this SPECIFIC task:
 
-Task Title: "${task.title}"
-Task Description: "${task.description}"
+TASK TO VERIFY:
+Title: "${task.title}"
+Description: "${task.description}"
 
-STRICT VERIFICATION RULES:
-1. The image must directly show evidence related to the specific task described above
-2. Generic or unrelated images should be rejected
-3. The proof must be clear and unambiguous
-4. Screenshots or photos must clearly demonstrate task completion
+CRITICAL VERIFICATION RULES:
+1. The ${file.type === 'application/pdf' ? 'document' : 'image'} must contain DIRECT, SPECIFIC evidence related to the exact task described above
+2. Generic, unrelated, or vague content should be REJECTED
+3. The proof must clearly demonstrate completion of the SPECIFIC task, not just related activities
+4. For PDFs: Read and analyze the text content, check for specific task-related information, dates, completion evidence
+5. For images: Look for visual evidence that directly shows the task being completed
+6. Be extremely strict - only approve if there is unmistakable, clear evidence of this exact task being completed
 
-Based on your analysis, respond with either:
-- "SUCCESS: [specific explanation of how the image proves this exact task was completed]"
-- "FAILURE: [specific explanation of why the image doesn't prove this specific task was completed]"
+RESPONSE FORMAT:
+Respond with either:
+- "SUCCESS: [Detailed explanation of exactly how this ${file.type === 'application/pdf' ? 'document' : 'image'} proves the specific task '${task.title}' was completed, including specific details you found]"
+- "FAILURE: [Detailed explanation of why this ${file.type === 'application/pdf' ? 'document' : 'image'} does not prove the specific task '${task.title}' was completed, and what evidence is missing]"
 
-Be very strict - only approve if there is clear, direct evidence of the specific task being completed.`;
+Analyze the content thoroughly and be very strict in your verification. Only approve if you are absolutely certain the task was completed based on the evidence provided.`;
 
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDWu4shuPSzsRJwse81Ig1m-9f5UJPktm8', {
         method: 'POST',
@@ -150,7 +147,7 @@ Be very strict - only approve if there is clear, direct evidence of the specific
               {
                 inline_data: {
                   mime_type: file.type,
-                  data: base64Image
+                  data: base64Data
                 }
               }
             ]
@@ -217,7 +214,7 @@ Be very strict - only approve if there is clear, direct evidence of the specific
           status: 'verified'
         });
 
-        // Create reward - this was missing proper error handling
+        // Create reward
         try {
           const reward = await createReward(task.id, task.money_at_stake);
           console.log('Reward created successfully:', reward);
@@ -325,7 +322,7 @@ Be very strict - only approve if there is clear, direct evidence of the specific
             <CardHeader>
               <CardTitle>Upload Proof</CardTitle>
               <CardDescription>
-                Upload an image that clearly shows you completed the task. PDFs require manual verification.
+                Upload an image or PDF document that clearly shows you completed the task. Our AI will analyze your submission carefully.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -347,7 +344,11 @@ Be very strict - only approve if there is clear, direct evidence of the specific
               {selectedFile && (
                 <div className="space-y-4">
                   <div className="flex items-center space-x-3 p-4 border rounded-lg">
-                    <FileImage className="h-8 w-8 text-blue-500" />
+                    {selectedFile.type === 'application/pdf' ? (
+                      <FileText className="h-8 w-8 text-red-500" />
+                    ) : (
+                      <FileImage className="h-8 w-8 text-blue-500" />
+                    )}
                     <div className="flex-1">
                       <p className="font-medium">{selectedFile.name}</p>
                       <p className="text-sm text-muted-foreground">
@@ -407,7 +408,7 @@ Be very strict - only approve if there is clear, direct evidence of the specific
                 {isVerifying ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Verifying with AI...
+                    Analyzing with AI...
                   </>
                 ) : (
                   'Submit Proof'
@@ -415,7 +416,7 @@ Be very strict - only approve if there is clear, direct evidence of the specific
               </Button>
 
               <p className="text-xs text-muted-foreground text-center">
-                Our AI will analyze your image to verify task completion. For best results, upload clear images showing direct evidence of completion.
+                Our AI will thoroughly analyze your submission to verify task completion. Make sure your file clearly shows evidence of completing the specific task.
               </p>
             </CardContent>
           </Card>
