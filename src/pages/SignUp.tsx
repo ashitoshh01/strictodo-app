@@ -21,7 +21,6 @@ const SignUp = () => {
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [isVerifyingEmail, setIsVerifyingEmail] = useState(false);
   
   const { signUp, user } = useAuth();
   const navigate = useNavigate();
@@ -54,49 +53,6 @@ const SignUp = () => {
     }
     
     setIsLoading(false);
-  };
-
-  const handleVerifyEmail = async () => {
-    if (!formData.email) {
-      toast({
-        title: "Email required",
-        description: "Please enter your email address first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsVerifyingEmail(true);
-    
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: formData.email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`
-        }
-      });
-
-      if (error) {
-        toast({
-          title: "Verification failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Verification email sent",
-          description: "Please check your email for the verification link.",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Verification failed",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
-    }
-    
-    setIsVerifyingEmail(false);
   };
 
   const handleGoogleSignIn = async () => {
@@ -248,18 +204,6 @@ const SignUp = () => {
                     disabled={isLoading}
                   />
                 </div>
-                {formData.email && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleVerifyEmail}
-                    disabled={isVerifyingEmail || isLoading}
-                    className="w-full mt-2"
-                  >
-                    {isVerifyingEmail ? "Sending..." : "Verify Email"}
-                  </Button>
-                )}
               </div>
 
               <div className="space-y-2">
