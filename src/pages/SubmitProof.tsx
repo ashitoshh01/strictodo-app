@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -49,11 +48,11 @@ const SubmitProof = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
+      // Check file size (max 100MB)
+      if (file.size > 100 * 1024 * 1024) {
         toast({
           title: "Error",
-          description: "File size must be less than 10MB",
+          description: "File size must be less than 100MB",
           variant: "destructive"
         });
         return;
@@ -112,27 +111,32 @@ const SubmitProof = () => {
     if (!task) throw new Error('Task not found');
 
     try {
-      // Only verify images with Gemini, PDFs are accepted automatically for now
+      // For PDFs, require manual verification - don't auto-approve
       if (file.type === 'application/pdf') {
         return {
-          success: true,
-          message: "PDF document uploaded successfully. Manual verification may be required."
+          success: false,
+          message: "PDF documents require manual verification. Please provide an image showing proof of completion instead."
         };
       }
 
       const base64Image = await convertFileToBase64(file);
       
-      const prompt = `Please analyze this image and determine if it shows evidence of completing the following task:
+      const prompt = `Please analyze this image very carefully and determine if it shows clear evidence of completing the following specific task:
 
 Task Title: "${task.title}"
 Task Description: "${task.description}"
 
-Based on the image, does it provide valid proof that this specific task was completed? 
-Please respond with either:
-1. "SUCCESS: [brief explanation of why the image proves task completion]"
-2. "FAILURE: [brief explanation of why the image doesn't prove task completion]"
+STRICT VERIFICATION RULES:
+1. The image must directly show evidence related to the specific task described above
+2. Generic or unrelated images should be rejected
+3. The proof must be clear and unambiguous
+4. Screenshots or photos must clearly demonstrate task completion
 
-Be strict in your evaluation - the image should clearly show evidence of the specific task being completed.`;
+Based on your analysis, respond with either:
+- "SUCCESS: [specific explanation of how the image proves this exact task was completed]"
+- "FAILURE: [specific explanation of why the image doesn't prove this specific task was completed]"
+
+Be very strict - only approve if there is clear, direct evidence of the specific task being completed.`;
 
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDWu4shuPSzsRJwse81Ig1m-9f5UJPktm8', {
         method: 'POST',
@@ -197,13 +201,13 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
       // Upload file to storage
       const proofUrl = await uploadFile(selectedFile);
       
-      // Update task with proof URL
+      // Update task with proof URL and set status to submitted
       await updateTask(task.id, {
         proof_url: proofUrl,
         status: 'submitted'
       });
 
-      // Verify with Gemini (or accept PDFs automatically)
+      // Verify with Gemini
       const result = await verifyWithGemini(selectedFile);
       setVerificationResult(result);
 
@@ -213,13 +217,23 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
           status: 'verified'
         });
 
-        // Create reward
-        await createReward(task.id, task.money_at_stake);
-
-        toast({
-          title: "Success!",
-          description: "Task verified successfully! You've earned a reward coupon.",
-        });
+        // Create reward - this was missing proper error handling
+        try {
+          const reward = await createReward(task.id, task.money_at_stake);
+          console.log('Reward created successfully:', reward);
+          
+          toast({
+            title: "Success!",
+            description: "Task verified successfully! You've earned a reward coupon. Check your rewards page!",
+          });
+        } catch (rewardError) {
+          console.error('Failed to create reward:', rewardError);
+          toast({
+            title: "Task Verified",
+            description: "Task completed but there was an issue creating your reward. Please contact support.",
+            variant: "destructive"
+          });
+        }
         
         setTimeout(() => {
           navigate('/dashboard');
@@ -232,11 +246,12 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
 
         toast({
           title: "Verification Failed",
-          description: "The proof doesn't match the task requirements. Try again with better evidence.",
+          description: result.message,
           variant: "destructive"
         });
       }
     } catch (error: any) {
+      console.error('Submit proof error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to submit proof",
@@ -310,7 +325,7 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
             <CardHeader>
               <CardTitle>Upload Proof</CardTitle>
               <CardDescription>
-                Upload an image or PDF that clearly shows you completed the task
+                Upload an image that clearly shows you completed the task. PDFs require manual verification.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -324,7 +339,7 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
                   className="cursor-pointer"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Supported formats: JPEG, PNG, WebP, PDF (max 10MB)
+                  Supported formats: JPEG, PNG, WebP, PDF (max 100MB)
                 </p>
               </div>
 
@@ -400,7 +415,7 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
               </Button>
 
               <p className="text-xs text-muted-foreground text-center">
-                Our AI will analyze your image to verify task completion. PDFs are accepted for manual review.
+                Our AI will analyze your image to verify task completion. For best results, upload clear images showing direct evidence of completion.
               </p>
             </CardContent>
           </Card>

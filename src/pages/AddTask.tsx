@@ -50,6 +50,30 @@ const AddTask = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const getCurrentTimeString = () => {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  };
+
+  const isTimeValid = (selectedDate: Date | undefined, timeString: string) => {
+    if (!selectedDate || !timeString) return true;
+    
+    const now = new Date();
+    const selectedDateTime = new Date(selectedDate);
+    const [hours, minutes] = timeString.split(':').map(Number);
+    selectedDateTime.setHours(hours, minutes, 0, 0);
+    
+    // If selected date is today, time must be in the future
+    if (selectedDate.toDateString() === now.toDateString()) {
+      return selectedDateTime > now;
+    }
+    
+    // If selected date is in the future, any time is valid
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -66,6 +90,16 @@ const AddTask = () => {
       toast({
         title: "Error",
         description: "Money at stake must be greater than 0",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Validate time selection
+    if (!isTimeValid(formData.dueDate, formData.dueTime)) {
+      toast({
+        title: "Error",
+        description: "For today's date, please select a future time",
         variant: "destructive"
       });
       return;
@@ -101,6 +135,22 @@ const AddTask = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Get minimum time for today
+  const getMinTime = () => {
+    if (!formData.dueDate) return '';
+    
+    const now = new Date();
+    const selectedDate = new Date(formData.dueDate);
+    
+    // If selected date is today, minimum time is current time
+    if (selectedDate.toDateString() === now.toDateString()) {
+      return getCurrentTimeString();
+    }
+    
+    // For future dates, no minimum time restriction
+    return '';
   };
 
   return (
@@ -186,7 +236,13 @@ const AddTask = () => {
                           mode="single"
                           selected={formData.dueDate}
                           onSelect={(date) => handleInputChange('dueDate', date)}
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const dateToCheck = new Date(date);
+                            dateToCheck.setHours(0, 0, 0, 0);
+                            return dateToCheck < today;
+                          }}
                           initialFocus
                         />
                       </PopoverContent>
@@ -198,10 +254,16 @@ const AddTask = () => {
                     <Input
                       id="dueTime"
                       type="time"
+                      min={getMinTime()}
                       value={formData.dueTime}
                       onChange={(e) => handleInputChange('dueTime', e.target.value)}
                       required
                     />
+                    {formData.dueDate && formData.dueDate.toDateString() === new Date().toDateString() && (
+                      <p className="text-xs text-muted-foreground">
+                        For today's date, select a future time
+                      </p>
+                    )}
                   </div>
                 </div>
 
