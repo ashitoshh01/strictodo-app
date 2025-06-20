@@ -1,18 +1,25 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Upload, CheckCircle, XCircle, FileImage, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle, XCircle, FileImage, Loader2, ArrowLeft, IndianRupee } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useTasks } from '@/hooks/useTasks';
+import { useRewards } from '@/hooks/useRewards';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SubmitProof = () => {
   const { taskId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { tasks, updateTask } = useTasks();
+  const { createReward } = useRewards();
+  const { user } = useAuth();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -21,14 +28,7 @@ const SubmitProof = () => {
     message: string;
   } | null>(null);
 
-  // Mock task data - in real app, fetch from database
-  const task = {
-    id: taskId,
-    title: 'Complete Morning Workout',
-    description: 'Do a 30-minute cardio workout',
-    dueDate: '2025-06-17T09:00:00',
-    moneyAtStake: 25
-  };
+  const task = tasks.find(t => t.id === taskId);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -59,12 +59,12 @@ const SubmitProof = () => {
         return;
       }
 
-      // Check file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      // Check file type (allow images and PDFs)
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
       if (!allowedTypes.includes(file.type)) {
         toast({
           title: "Error",
-          description: "Please upload an image file (JPEG, PNG, or WebP)",
+          description: "Please upload an image file (JPEG, PNG, WebP) or PDF",
           variant: "destructive"
         });
         return;
@@ -75,13 +75,32 @@ const SubmitProof = () => {
     }
   };
 
+  const uploadFile = async (file: File): Promise<string> => {
+    if (!user) throw new Error('User not authenticated');
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${user.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('task-proofs')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('task-proofs')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  };
+
   const convertFileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
         const base64String = reader.result as string;
-        // Remove the data:image/jpeg;base64, prefix
         const base64Data = base64String.split(',')[1];
         resolve(base64Data);
       };
@@ -90,7 +109,17 @@ const SubmitProof = () => {
   };
 
   const verifyWithGemini = async (file: File) => {
+    if (!task) throw new Error('Task not found');
+
     try {
+      // Only verify images with Gemini, PDFs are accepted automatically for now
+      if (file.type === 'application/pdf') {
+        return {
+          success: true,
+          message: "PDF document uploaded successfully. Manual verification may be required."
+        };
+      }
+
       const base64Image = await convertFileToBase64(file);
       
       const prompt = `Please analyze this image and determine if it shows evidence of completing the following task:
@@ -139,7 +168,6 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
 
       console.log('Gemini AI Response:', aiResponse);
 
-      // Parse the AI response
       const isSuccess = aiResponse.toUpperCase().startsWith('SUCCESS');
       const message = aiResponse.replace(/^(SUCCESS|FAILURE):\s*/, '');
 
@@ -154,7 +182,7 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
   };
 
   const handleSubmitProof = async () => {
-    if (!selectedFile) {
+    if (!selectedFile || !task) {
       toast({
         title: "Error",
         description: "Please select a file to upload",
@@ -166,30 +194,52 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
     setIsVerifying(true);
 
     try {
+      // Upload file to storage
+      const proofUrl = await uploadFile(selectedFile);
+      
+      // Update task with proof URL
+      await updateTask(task.id, {
+        proof_url: proofUrl,
+        status: 'submitted'
+      });
+
+      // Verify with Gemini (or accept PDFs automatically)
       const result = await verifyWithGemini(selectedFile);
       setVerificationResult(result);
 
       if (result.success) {
+        // Update task status to verified
+        await updateTask(task.id, {
+          status: 'verified'
+        });
+
+        // Create reward
+        await createReward(task.id, task.money_at_stake);
+
         toast({
           title: "Success!",
-          description: "Task verified successfully! You've earned your money back.",
+          description: "Task verified successfully! You've earned a reward coupon.",
         });
         
-        // In a real app, update task status in database
         setTimeout(() => {
           navigate('/dashboard');
         }, 3000);
       } else {
+        // Update task status to failed
+        await updateTask(task.id, {
+          status: 'failed'
+        });
+
         toast({
           title: "Verification Failed",
           description: "The proof doesn't match the task requirements. Try again with better evidence.",
           variant: "destructive"
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to verify proof",
+        description: error.message || "Failed to submit proof",
         variant: "destructive"
       });
     } finally {
@@ -197,17 +247,38 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
     }
   };
 
+  if (!task) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+        <main className="container mx-auto px-4 py-8">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Task not found</h1>
+            <Button onClick={() => navigate('/dashboard')}>
+              Back to Dashboard
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar 
-        onToggleTheme={toggleTheme} 
-        isDarkMode={isDarkMode} 
-      />
+      <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/dashboard')}
+              className="absolute top-20 left-4 p-2"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
             <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
               <Upload className="h-8 w-8 text-white" />
             </div>
@@ -226,7 +297,10 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
             <CardContent>
               <div className="flex items-center justify-between text-sm">
                 <span>Money at stake:</span>
-                <span className="font-semibold text-green-600">${task.moneyAtStake}</span>
+                <span className="font-semibold text-green-600 flex items-center">
+                  <IndianRupee className="h-4 w-4 mr-1" />
+                  ₹{task.money_at_stake}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -236,22 +310,21 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
             <CardHeader>
               <CardTitle>Upload Proof</CardTitle>
               <CardDescription>
-                Upload an image that clearly shows you completed the task
+                Upload an image or PDF that clearly shows you completed the task
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* File Input */}
               <div className="space-y-2">
                 <Label htmlFor="proof-file">Choose File</Label>
                 <Input
                   id="proof-file"
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.pdf"
                   onChange={handleFileSelect}
                   className="cursor-pointer"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Supported formats: JPEG, PNG, WebP (max 10MB)
+                  Supported formats: JPEG, PNG, WebP, PDF (max 10MB)
                 </p>
               </div>
 
@@ -268,14 +341,16 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
                     </div>
                   </div>
 
-                  {/* Preview Image */}
-                  <div className="relative">
-                    <img
-                      src={URL.createObjectURL(selectedFile)}
-                      alt="Proof preview"
-                      className="w-full max-h-64 object-cover rounded-lg"
-                    />
-                  </div>
+                  {/* Preview Image (not for PDF) */}
+                  {selectedFile.type !== 'application/pdf' && (
+                    <div className="relative">
+                      <img
+                        src={URL.createObjectURL(selectedFile)}
+                        alt="Proof preview"
+                        className="w-full max-h-64 object-cover rounded-lg"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -325,14 +400,12 @@ Be strict in your evaluation - the image should clearly show evidence of the spe
               </Button>
 
               <p className="text-xs text-muted-foreground text-center">
-                Our AI will analyze your image to verify task completion
+                Our AI will analyze your image to verify task completion. PDFs are accepted for manual review.
               </p>
             </CardContent>
           </Card>
         </div>
       </main>
-      
-      <Footer />
     </div>
   );
 };

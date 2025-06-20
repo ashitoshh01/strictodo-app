@@ -1,7 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, DollarSign, Target } from 'lucide-react';
+import { CalendarIcon, IndianRupee, Target, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useTasks } from '@/hooks/useTasks';
 
 const AddTask = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { createTask } = useTasks();
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -77,19 +79,12 @@ const AddTask = () => {
       const dueDateTime = new Date(formData.dueDate);
       dueDateTime.setHours(parseInt(hours), parseInt(minutes));
 
-      // Create new task
-      const newTask = {
-        id: Date.now().toString(),
+      await createTask({
         title: formData.title,
         description: formData.description,
-        dueDate: dueDateTime.toISOString(),
-        moneyAtStake: parseFloat(formData.moneyAtStake),
-        status: 'pending' as const,
-        createdAt: new Date().toISOString()
-      };
-
-      // In a real app, this would be saved to a database
-      console.log('New task created:', newTask);
+        due_date: dueDateTime.toISOString(),
+        money_at_stake: parseFloat(formData.moneyAtStake),
+      });
 
       toast({
         title: "Success!",
@@ -97,10 +92,10 @@ const AddTask = () => {
       });
 
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to create task. Please try again.",
+        description: error.message || "Failed to create task. Please try again.",
         variant: "destructive"
       });
     } finally {
@@ -110,15 +105,20 @@ const AddTask = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar 
-        onToggleTheme={toggleTheme} 
-        isDarkMode={isDarkMode} 
-      />
+      <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto space-y-8">
           {/* Header */}
           <div className="text-center space-y-4">
+            <Button
+              variant="ghost"
+              onClick={() => navigate('/dashboard')}
+              className="absolute top-20 left-4 p-2"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
             <div className="mx-auto w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-full flex items-center justify-center">
               <Target className="h-8 w-8 text-white" />
             </div>
@@ -138,7 +138,6 @@ const AddTask = () => {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Task Title */}
                 <div className="space-y-2">
                   <Label htmlFor="title">Task Title</Label>
                   <Input
@@ -150,7 +149,6 @@ const AddTask = () => {
                   />
                 </div>
 
-                {/* Task Description */}
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
                   <Textarea
@@ -163,7 +161,6 @@ const AddTask = () => {
                   />
                 </div>
 
-                {/* Due Date and Time */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Due Date</Label>
@@ -191,7 +188,6 @@ const AddTask = () => {
                           onSelect={(date) => handleInputChange('dueDate', date)}
                           disabled={(date) => date < new Date()}
                           initialFocus
-                          className="pointer-events-auto"
                         />
                       </PopoverContent>
                     </Popover>
@@ -209,17 +205,16 @@ const AddTask = () => {
                   </div>
                 </div>
 
-                {/* Money at Stake */}
                 <div className="space-y-2">
-                  <Label htmlFor="moneyAtStake">Money at Stake ($)</Label>
+                  <Label htmlFor="moneyAtStake">Money at Stake (₹)</Label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <IndianRupee className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
                       id="moneyAtStake"
                       type="number"
                       min="1"
                       step="0.01"
-                      placeholder="25.00"
+                      placeholder="100.00"
                       className="pl-10"
                       value={formData.moneyAtStake}
                       onChange={(e) => handleInputChange('moneyAtStake', e.target.value)}
@@ -231,7 +226,6 @@ const AddTask = () => {
                   </p>
                 </div>
 
-                {/* Submit Button */}
                 <Button 
                   type="submit" 
                   className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
@@ -244,8 +238,6 @@ const AddTask = () => {
           </Card>
         </div>
       </main>
-      
-      <Footer />
     </div>
   );
 };

@@ -1,46 +1,17 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
-import Footer from '@/components/layout/Footer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Clock, DollarSign, CheckCircle, XCircle, Upload } from 'lucide-react';
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  dueDate: string;
-  moneyAtStake: number;
-  status: 'pending' | 'submitted' | 'verified' | 'failed';
-  createdAt: string;
-  proofUrl?: string;
-}
+import { Plus, Clock, DollarSign, CheckCircle, XCircle, Upload, IndianRupee } from 'lucide-react';
+import { useTasks } from '@/hooks/useTasks';
 
 const Dashboard = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [tasks, setTasks] = useState<Task[]>([
-    {
-      id: '1',
-      title: 'Complete Morning Workout',
-      description: 'Do a 30-minute cardio workout',
-      dueDate: '2025-06-17T09:00:00',
-      moneyAtStake: 25,
-      status: 'pending',
-      createdAt: '2025-06-15T10:00:00'
-    },
-    {
-      id: '2',
-      title: 'Read 20 Pages',
-      description: 'Read 20 pages of my book',
-      dueDate: '2025-06-16T20:00:00',
-      moneyAtStake: 15,
-      status: 'verified',
-      createdAt: '2025-06-14T14:00:00'
-    }
-  ]);
+  const { tasks, loading } = useTasks();
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -79,13 +50,25 @@ const Dashboard = () => {
   };
 
   const completedTasks = tasks.filter(task => task.status === 'verified').length;
+  const totalStake = tasks.reduce((sum, task) => sum + task.money_at_stake, 0);
+  const earnedAmount = tasks.filter(task => task.status === 'verified').reduce((sum, task) => sum + task.money_at_stake, 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">Loading your tasks...</div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar 
-        onToggleTheme={toggleTheme} 
-        isDarkMode={isDarkMode} 
-      />
+      <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
       
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-8">
@@ -111,38 +94,43 @@ const Dashboard = () => {
                 <CheckCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">Active</div>
+                <div className="text-2xl font-bold">{tasks.length}</div>
+                <p className="text-xs text-muted-foreground">Active tasks</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Progress</CardTitle>
+                <CardTitle className="text-sm font-medium">Completed</CardTitle>
                 <CheckCircle className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">Great</div>
-                <Progress value={(completedTasks / tasks.length) * 100} className="mt-2" />
+                <div className="text-2xl font-bold">{completedTasks}</div>
+                {tasks.length > 0 && (
+                  <Progress value={(completedTasks / tasks.length) * 100} className="mt-2" />
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Commitment</CardTitle>
-                <DollarSign className="h-4 w-4 text-yellow-500" />
+                <CardTitle className="text-sm font-medium">Total Stake</CardTitle>
+                <IndianRupee className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">High</div>
+                <div className="text-2xl font-bold">₹{totalStake}</div>
+                <p className="text-xs text-muted-foreground">Money at risk</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Achievement</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-500" />
+                <CardTitle className="text-sm font-medium">Earned</CardTitle>
+                <IndianRupee className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">Excellent</div>
+                <div className="text-2xl font-bold">₹{earnedAmount}</div>
+                <p className="text-xs text-muted-foreground">From completed tasks</p>
               </CardContent>
             </Card>
           </div>
@@ -182,11 +170,11 @@ const Dashboard = () => {
                         <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                           <div className="flex items-center">
                             <Clock className="h-4 w-4 mr-1" />
-                            Due: {new Date(task.dueDate).toLocaleDateString()} at {new Date(task.dueDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                            Due: {new Date(task.due_date).toLocaleDateString()} at {new Date(task.due_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                           <div className="flex items-center">
-                            <DollarSign className="h-4 w-4 mr-1" />
-                            Commitment Set
+                            <IndianRupee className="h-4 w-4 mr-1" />
+                            ₹{task.money_at_stake}
                           </div>
                         </div>
                         {task.status === 'pending' && (
@@ -203,8 +191,6 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
-      
-      <Footer />
     </div>
   );
 };

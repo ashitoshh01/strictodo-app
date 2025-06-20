@@ -36,6 +36,83 @@ export type Database = {
         }
         Relationships: []
       }
+      rewards: {
+        Row: {
+          amount: number
+          coupon_code: string
+          created_at: string
+          id: string
+          is_scratched: boolean
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          coupon_code: string
+          created_at?: string
+          id?: string
+          is_scratched?: boolean
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          coupon_code?: string
+          created_at?: string
+          id?: string
+          is_scratched?: boolean
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rewards_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+          money_at_stake: number
+          proof_url: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          due_date: string
+          id?: string
+          money_at_stake: number
+          proof_url?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+          money_at_stake?: number
+          proof_url?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
