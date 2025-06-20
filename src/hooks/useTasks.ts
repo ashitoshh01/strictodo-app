@@ -32,7 +32,10 @@ export const useTasks = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTasks(data || []);
+      
+      // Type assertion to ensure the data matches our Task interface
+      const typedTasks = (data || []) as Task[];
+      setTasks(typedTasks);
     } catch (error: any) {
       toast({
         title: "Error fetching tasks",
