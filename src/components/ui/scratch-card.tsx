@@ -102,6 +102,11 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
     setIsDrawing(false);
   };
 
+  const preventSelection = (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    return false;
+  };
+
   return (
     <Card className="w-80 mx-auto bg-gradient-to-r from-yellow-400 to-orange-500">
       <CardContent className="p-6 text-center relative">
@@ -138,9 +143,8 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
               msUserSelect: 'none',
               zIndex: 1
             }}
-            onContextMenu={(e) => e.preventDefault()}
-            onDragStart={(e) => e.preventDefault()}
-            onSelectStart={(e) => e.preventDefault()}
+            onContextMenu={preventSelection}
+            onDragStart={preventSelection}
           />
         </div>
 
