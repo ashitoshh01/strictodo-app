@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Moon, Sun, User, LogOut, Settings, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
+import MobileNav from './MobileNav';
 
 interface NavbarProps {
   onToggleTheme?: () => void;
@@ -19,10 +20,20 @@ interface NavbarProps {
 
 const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, signOut, userProfile } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
+  };
+
+  const getUserDisplayName = () => {
+    if (userProfile?.full_name) {
+      return userProfile.full_name;
+    }
+    if (user?.email) {
+      return user.email.split('@')[0]; // Use part before @ if no full name
+    }
+    return 'User';
   };
 
   return (
@@ -36,7 +47,7 @@ const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
           <span className="text-xl font-bold">Do or Due</span>
         </Link>
 
-        {/* Navigation Links */}
+        {/* Desktop Navigation Links */}
         <div className="hidden md:flex items-center space-x-6">
           {user ? (
             <>
@@ -76,6 +87,9 @@ const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
 
         {/* Right Side Actions */}
         <div className="flex items-center space-x-4">
+          {/* Mobile Navigation */}
+          <MobileNav isDarkMode={isDarkMode} />
+
           {/* Theme Toggle */}
           <Button
             variant="ghost"
@@ -97,7 +111,8 @@ const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.email}</p>
+                    <p className="font-medium">{getUserDisplayName()}</p>
+                    <p className="text-xs text-muted-foreground">{user.email}</p>
                   </div>
                 </div>
                 <DropdownMenuSeparator />

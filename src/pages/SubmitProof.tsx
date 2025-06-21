@@ -12,6 +12,7 @@ import { useTasks } from '@/hooks/useTasks';
 import { useRewards } from '@/hooks/useRewards';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import ScratchCard from '@/components/ui/scratch-card';
 
 const SubmitProof = () => {
   const { taskId } = useParams();
@@ -27,6 +28,9 @@ const SubmitProof = () => {
     success: boolean;
     message: string;
   } | null>(null);
+  const [showScratchCard, setShowScratchCard] = useState(false);
+  const [rewardCoupon, setRewardCoupon] = useState<string>('');
+  const [showParsingMessage, setShowParsingMessage] = useState(false);
 
   const task = tasks.find(t => t.id === taskId);
 
@@ -108,32 +112,22 @@ const SubmitProof = () => {
     });
   };
 
+  const generateRandomCoupon = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return `REWARD-${result}`;
+  };
+
   const verifyWithGemini = async (file: File) => {
     if (!task) throw new Error('Task not found');
 
     try {
       const base64Data = await convertFileToBase64(file);
       
-      const prompt = `You are a strict task verification AI. Analyze this ${file.type === 'application/pdf' ? 'PDF document' : 'image'} very carefully and determine if it provides clear, direct evidence of completing this SPECIFIC task:
-
-TASK TO VERIFY:
-Title: "${task.title}"
-Description: "${task.description}"
-
-CRITICAL VERIFICATION RULES:
-1. The ${file.type === 'application/pdf' ? 'document' : 'image'} must contain DIRECT, SPECIFIC evidence related to the exact task described above
-2. Generic, unrelated, or vague content should be REJECTED
-3. The proof must clearly demonstrate completion of the SPECIFIC task, not just related activities
-4. For PDFs: Read and analyze the text content, check for specific task-related information, dates, completion evidence
-5. For images: Look for visual evidence that directly shows the task being completed
-6. Be extremely strict - only approve if there is unmistakable, clear evidence of this exact task being completed
-
-RESPONSE FORMAT:
-Respond with either:
-- "SUCCESS: [Detailed explanation of exactly how this ${file.type === 'application/pdf' ? 'document' : 'image'} proves the specific task '${task.title}' was completed, including specific details you found]"
-- "FAILURE: [Detailed explanation of why this ${file.type === 'application/pdf' ? 'document' : 'image'} does not prove the specific task '${task.title}' was completed, and what evidence is missing]"
-
-Analyze the content thoroughly and be very strict in your verification. Only approve if you are absolutely certain the task was completed based on the evidence provided.`;
+      const prompt = `You are a strict task verification AI. Analyze this ${file.type === 'application/pdf' ? 'PDF document'...;
 
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDWu4shuPSzsRJwse81Ig1m-9f5UJPktm8', {
         method: 'POST',
@@ -193,6 +187,11 @@ Analyze the content thoroughly and be very strict in your verification. Only app
     }
 
     setIsVerifying(true);
+    
+    // Show parsing message after 10 seconds
+    const parsingTimer = setTimeout(() => {
+      setShowParsingMessage(true);
+    }, 10000);
 
     try {
       // Upload file to storage
@@ -214,36 +213,32 @@ Analyze the content thoroughly and be very strict in your verification. Only app
           status: 'verified'
         });
 
-        // Create reward
+        // Generate and show scratch card
+        const couponCode = generateRandomCoupon();
+        setRewardCoupon(couponCode);
+        setShowScratchCard(true);
+
+        // Create reward in database
         try {
           const reward = await createReward(task.id, task.money_at_stake);
           console.log('Reward created successfully:', reward);
-          
-          toast({
-            title: "Success!",
-            description: "Task verified successfully! You've earned a reward coupon. Check your rewards page!",
-          });
         } catch (rewardError) {
           console.error('Failed to create reward:', rewardError);
-          toast({
-            title: "Task Verified",
-            description: "Task completed but there was an issue creating your reward. Please contact support.",
-            variant: "destructive"
-          });
         }
         
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 3000);
+        toast({
+          title: "Success!",
+          description: "Task verified successfully! Scratch the card to reveal your reward!",
+        });
       } else {
-        // Update task status to failed
+        // Update task status to failed, but allow re-upload
         await updateTask(task.id, {
-          status: 'failed'
+          status: 'pending' // Changed from 'failed' to 'pending' to allow re-upload
         });
 
         toast({
           title: "Verification Failed",
-          description: result.message,
+          description: result.message + " You can try uploading a different proof.",
           variant: "destructive"
         });
       }
@@ -255,9 +250,14 @@ Analyze the content thoroughly and be very strict in your verification. Only app
         variant: "destructive"
       });
     } finally {
+      clearTimeout(parsingTimer);
       setIsVerifying(false);
+      setShowParsingMessage(false);
     }
   };
+
+  // Check if task is still within deadline
+  const isWithinDeadline = task ? new Date(task.due_date) > new Date() : false;
 
   if (!task) {
     return (
@@ -314,112 +314,157 @@ Analyze the content thoroughly and be very strict in your verification. Only app
                   ₹{task.money_at_stake}
                 </span>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* File Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Proof</CardTitle>
-              <CardDescription>
-                Upload an image or PDF document that clearly shows you completed the task. Our AI will analyze your submission carefully.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="proof-file">Choose File</Label>
-                <Input
-                  id="proof-file"
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleFileSelect}
-                  className="cursor-pointer"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Supported formats: JPEG, PNG, WebP, PDF (max 100MB)
-                </p>
+              <div className="flex items-center justify-between text-sm mt-2">
+                <span>Due date:</span>
+                <span className={`font-semibold ${isWithinDeadline ? 'text-green-600' : 'text-red-600'}`}>
+                  {new Date(task.due_date).toLocaleDateString()} at {new Date(task.due_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                </span>
               </div>
-
-              {/* File Preview */}
-              {selectedFile && (
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-3 p-4 border rounded-lg">
-                    {selectedFile.type === 'application/pdf' ? (
-                      <FileText className="h-8 w-8 text-red-500" />
-                    ) : (
-                      <FileImage className="h-8 w-8 text-blue-500" />
-                    )}
-                    <div className="flex-1">
-                      <p className="font-medium">{selectedFile.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Preview Image (not for PDF) */}
-                  {selectedFile.type !== 'application/pdf' && (
-                    <div className="relative">
-                      <img
-                        src={URL.createObjectURL(selectedFile)}
-                        alt="Proof preview"
-                        className="w-full max-h-64 object-cover rounded-lg"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Verification Result */}
-              {verificationResult && (
-                <div className={`p-4 rounded-lg border ${
-                  verificationResult.success 
-                    ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800' 
-                    : 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'
-                }`}>
-                  <div className="flex items-start space-x-3">
-                    {verificationResult.success ? (
-                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                    ) : (
-                      <XCircle className="h-5 w-5 text-red-500 mt-0.5" />
-                    )}
-                    <div>
-                      <p className={`font-medium ${
-                        verificationResult.success ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
-                      }`}>
-                        {verificationResult.success ? 'Verification Successful!' : 'Verification Failed'}
-                      </p>
-                      <p className={`text-sm ${
-                        verificationResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
-                      }`}>
-                        {verificationResult.message}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <Button 
-                onClick={handleSubmitProof}
-                disabled={!selectedFile || isVerifying}
-                className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
-              >
-                {isVerifying ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing with AI...
-                  </>
-                ) : (
-                  'Submit Proof'
-                )}
-              </Button>
-
-              <p className="text-xs text-muted-foreground text-center">
-                Our AI will thoroughly analyze your submission to verify task completion. Make sure your file clearly shows evidence of completing the specific task.
-              </p>
             </CardContent>
           </Card>
+
+          {/* Show scratch card if task is successful */}
+          {showScratchCard && (
+            <div className="text-center space-y-4">
+              <ScratchCard 
+                couponCode={rewardCoupon}
+                amount={task.money_at_stake}
+                onReveal={() => {
+                  setTimeout(() => {
+                    navigate('/dashboard');
+                  }, 3000);
+                }}
+              />
+            </div>
+          )}
+
+          {/* File Upload - Show only if within deadline */}
+          {isWithinDeadline && !showScratchCard && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload Proof</CardTitle>
+                <CardDescription>
+                  Upload an image or PDF document that clearly shows you completed the task. You can upload multiple times until the deadline.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="proof-file">Choose File</Label>
+                  <Input
+                    id="proof-file"
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleFileSelect}
+                    className="cursor-pointer"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Supported formats: JPEG, PNG, WebP, PDF (max 100MB)
+                  </p>
+                </div>
+
+                {/* File Preview */}
+                {selectedFile && (
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-3 p-4 border rounded-lg">
+                      {selectedFile.type === 'application/pdf' ? (
+                        <FileText className="h-8 w-8 text-red-500" />
+                      ) : (
+                        <FileImage className="h-8 w-8 text-blue-500" />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium">{selectedFile.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Preview Image (not for PDF) */}
+                    {selectedFile.type !== 'application/pdf' && (
+                      <div className="relative">
+                        <img
+                          src={URL.createObjectURL(selectedFile)}
+                          alt="Proof preview"
+                          className="w-full max-h-64 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Parsing Message */}
+                {showParsingMessage && (
+                  <div className="text-center p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <p className="text-blue-700 dark:text-blue-300">
+                      The data is parsing, it may take a couple of seconds. Kindly wait...
+                    </p>
+                  </div>
+                )}
+
+                {/* Verification Result */}
+                {verificationResult && (
+                  <div className={`p-4 rounded-lg border ${
+                    verificationResult.success 
+                      ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-800' 
+                      : 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-800'
+                  }`}>
+                    <div className="flex items-start space-x-3">
+                      {verificationResult.success ? (
+                        <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-red-500 mt-0.5" />
+                      )}
+                      <div>
+                        <p className={`font-medium ${
+                          verificationResult.success ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'
+                        }`}>
+                          {verificationResult.success ? 'Verification Successful!' : 'Verification Failed'}
+                        </p>
+                        <p className={`text-sm ${
+                          verificationResult.success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+                        }`}>
+                          {verificationResult.message}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Submit Button */}
+                <Button 
+                  onClick={handleSubmitProof}
+                  disabled={!selectedFile || isVerifying}
+                  className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
+                >
+                  {isVerifying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Analyzing with AI...
+                    </>
+                  ) : (
+                    'Submit Proof'
+                  )}
+                </Button>
+
+                <p className="text-xs text-muted-foreground text-center">
+                  Our AI will thoroughly analyze your submission. You can resubmit multiple times until the deadline.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Deadline passed message */}
+          {!isWithinDeadline && !showScratchCard && (
+            <Card>
+              <CardContent className="text-center py-8">
+                <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-red-600 mb-2">Deadline Passed</h3>
+                <p className="text-muted-foreground">
+                  The deadline for this task has passed. You can no longer submit proof.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
