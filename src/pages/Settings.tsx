@@ -8,18 +8,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, User, Trash2, Send, Clock, CheckCircle, XCircle, Upload } from 'lucide-react';
+import { ArrowLeft, User, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTasks } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
+import TaskManager from '@/components/settings/TaskManager';
 
 const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
-  const { tasks, updateTask } = useTasks();
+  const { tasks, refetch } = useTasks();
   const [isDarkMode, setIsDarkMode] = useState(false);
   
   // Profile form state
@@ -86,31 +86,6 @@ const Settings = () => {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', taskId);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Task deleted successfully!",
-      });
-      
-      // Refresh tasks list
-      window.location.reload();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete task",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleReportIssue = async () => {
     if (!reportName || !reportEmail || !reportIssue) {
       toast({
@@ -143,26 +118,6 @@ const Settings = () => {
       });
     } finally {
       setIsSubmittingReport(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'submitted': return 'bg-blue-500';
-      case 'verified': return 'bg-green-500';
-      case 'failed': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'pending': return <Clock className="h-4 w-4" />;
-      case 'submitted': return <Upload className="h-4 w-4" />;
-      case 'verified': return <CheckCircle className="h-4 w-4" />;
-      case 'failed': return <XCircle className="h-4 w-4" />;
-      default: return <Clock className="h-4 w-4" />;
     }
   };
 
@@ -229,46 +184,7 @@ const Settings = () => {
           </Card>
 
           {/* Task Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Task Management</CardTitle>
-              <CardDescription>
-                Manage your existing tasks
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {tasks.length === 0 ? (
-                <p className="text-muted-foreground">No tasks found</p>
-              ) : (
-                <div className="space-y-4">
-                  {tasks.map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <h3 className="font-medium">{task.title}</h3>
-                          <Badge className={`${getStatusColor(task.status)} text-white`}>
-                            {getStatusIcon(task.status)}
-                            <span className="ml-1 capitalize">{task.status}</span>
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">{task.description}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Due: {new Date(task.due_date).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteTask(task.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          <TaskManager tasks={tasks} onTasksUpdate={refetch} />
 
           <Separator />
 

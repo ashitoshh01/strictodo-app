@@ -67,16 +67,19 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
     setIsDrawing(true);
     scratch(e.clientX, e.clientY);
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    e.preventDefault();
     if (!isDrawing) return;
     scratch(e.clientX, e.clientY);
   };
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
+    e.preventDefault();
     setIsDrawing(false);
   };
 
@@ -108,7 +111,7 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
         </div>
         
         <div className="relative inline-block">
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white font-bold">
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white font-bold pointer-events-none select-none" style={{ zIndex: -1 }}>
             <div className="text-2xl mb-2">₹{amount}</div>
             <div className="text-sm">Coupon Code:</div>
             <div className="text-lg font-mono bg-white text-black px-2 py-1 rounded">
@@ -118,7 +121,7 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
           
           <canvas
             ref={canvasRef}
-            className="cursor-pointer touch-none"
+            className="cursor-pointer touch-none relative select-none"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -126,7 +129,18 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
-            style={{ width: '300px', height: '150px' }}
+            style={{ 
+              width: '300px', 
+              height: '150px',
+              userSelect: 'none',
+              WebkitUserSelect: 'none',
+              MozUserSelect: 'none',
+              msUserSelect: 'none',
+              zIndex: 1
+            }}
+            onContextMenu={(e) => e.preventDefault()}
+            onDragStart={(e) => e.preventDefault()}
+            onSelectStart={(e) => e.preventDefault()}
           />
         </div>
 
