@@ -127,7 +127,17 @@ const SubmitProof = () => {
     try {
       const base64Data = await convertFileToBase64(file);
       
-      const prompt = `You are a strict task verification AI. Analyze this ${file.type === 'application/pdf' ? 'PDF document'...;
+      const prompt = `You are a strict task verification AI. Analyze this ${file.type === 'application/pdf' ? 'PDF document' : 'image'} and determine if it shows completion of the following task:
+
+Task: "${task.title}"
+Description: "${task.description}"
+
+You must respond with either "SUCCESS:" or "FAILURE:" followed by a brief explanation.
+
+SUCCESS: Only if the evidence clearly and unambiguously shows the task was completed as described.
+FAILURE: If there's any doubt, the evidence is unclear, doesn't match the task, or shows incomplete work.
+
+Be strict and thorough in your analysis.`;
 
       const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyDWu4shuPSzsRJwse81Ig1m-9f5UJPktm8', {
         method: 'POST',
