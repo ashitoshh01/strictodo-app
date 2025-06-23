@@ -23,12 +23,19 @@ export const useRewards = () => {
     if (!user) return;
 
     try {
+      console.log('Fetching rewards for user:', user.id);
       const { data, error } = await supabase
         .from('rewards')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching rewards:', error);
+        throw error;
+      }
+      
+      console.log('Fetched rewards:', data);
       setRewards(data || []);
     } catch (error: any) {
       toast({
@@ -46,6 +53,8 @@ export const useRewards = () => {
 
     const couponCode = `REWARD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
+    console.log('Creating reward:', { taskId, amount, couponCode });
+
     const { data, error } = await supabase
       .from('rewards')
       .insert([{
@@ -57,19 +66,35 @@ export const useRewards = () => {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating reward:', error);
+      throw error;
+    }
+    
+    console.log('Created reward:', data);
     await fetchRewards();
     return data;
   };
 
   const scratchReward = async (id: string) => {
-    const { error } = await supabase
+    console.log('Scratching reward with ID:', id);
+    
+    const { data, error } = await supabase
       .from('rewards')
       .update({ is_scratched: true })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', user?.id)
+      .select()
+      .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error scratching reward:', error);
+      throw error;
+    }
+
+    console.log('Scratched reward successfully:', data);
     await fetchRewards();
+    return data;
   };
 
   useEffect(() => {

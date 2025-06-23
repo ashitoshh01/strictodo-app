@@ -34,12 +34,14 @@ const Rewards = () => {
 
   const handleScratchCard = async (rewardId: string) => {
     try {
+      console.log('Scratching reward with ID:', rewardId);
       await scratchReward(rewardId);
       toast({
         title: "Coupon Revealed!",
-        description: "Your coupon code has been revealed. Save it for future use!",
+        description: "Your coupon code has been revealed and saved!",
       });
     } catch (error: any) {
+      console.error('Error scratching reward:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to reveal coupon",
