@@ -116,7 +116,8 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
         </div>
         
         <div className="relative inline-block">
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white font-bold pointer-events-none select-none" style={{ zIndex: -1 }}>
+          {/* Background content that shows when scratched */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-white font-bold pointer-events-none">
             <div className="text-2xl mb-2">₹{amount}</div>
             <div className="text-sm">Coupon Code:</div>
             <div className="text-lg font-mono bg-white text-black px-2 py-1 rounded">
@@ -124,9 +125,10 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
             </div>
           </div>
           
+          {/* Scratch canvas overlay */}
           <canvas
             ref={canvasRef}
-            className="cursor-pointer touch-none relative select-none"
+            className="cursor-pointer touch-none relative"
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
@@ -140,8 +142,7 @@ const ScratchCard = ({ couponCode, amount, onReveal }: ScratchCardProps) => {
               userSelect: 'none',
               WebkitUserSelect: 'none',
               MozUserSelect: 'none',
-              msUserSelect: 'none',
-              zIndex: 1
+              msUserSelect: 'none'
             }}
             onContextMenu={preventSelection}
             onDragStart={preventSelection}

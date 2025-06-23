@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Gift, IndianRupee, Sparkles, ArrowLeft } from 'lucide-react';
 import { useRewards } from '@/hooks/useRewards';
 import { useToast } from '@/hooks/use-toast';
+import ScratchCard from '@/components/ui/scratch-card';
 
 const Rewards = () => {
   const navigate = useNavigate();
@@ -129,7 +130,7 @@ const Rewards = () => {
                     }`}
                   >
                     {!reward.is_scratched && (
-                      <div className="absolute top-2 right-2">
+                      <div className="absolute top-2 right-2 z-10">
                         <Badge className="bg-yellow-500 text-white">
                           <Sparkles className="h-3 w-3 mr-1" />
                           New
@@ -148,34 +149,29 @@ const Rewards = () => {
                     </CardHeader>
                     
                     <CardContent className="space-y-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-green-600 flex items-center justify-center">
-                          <IndianRupee className="h-6 w-6 mr-1" />
-                          ₹{reward.amount}
-                        </div>
-                        <p className="text-sm text-muted-foreground">Value</p>
-                      </div>
-                      
                       {reward.is_scratched ? (
-                        <div className="text-center space-y-2">
-                          <div className="font-mono text-lg font-bold bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded border-2 border-dashed">
-                            {reward.coupon_code}
+                        <div className="text-center space-y-4">
+                          <div className="text-2xl font-bold text-green-600 flex items-center justify-center">
+                            <IndianRupee className="h-6 w-6 mr-1" />
+                            ₹{reward.amount}
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            Save this coupon code for future use
-                          </p>
+                          <div className="space-y-2">
+                            <p className="text-sm text-muted-foreground">Coupon Code:</p>
+                            <div className="font-mono text-lg font-bold bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded border-2 border-dashed">
+                              {reward.coupon_code}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Save this coupon code for future use
+                            </p>
+                          </div>
                         </div>
                       ) : (
-                        <div className="text-center space-y-2">
-                          <div className="bg-gradient-to-r from-yellow-400 to-orange-400 text-white px-4 py-6 rounded-lg shadow-lg cursor-pointer hover:from-yellow-500 hover:to-orange-500 transition-colors"
-                               onClick={() => handleScratchCard(reward.id)}>
-                            <Sparkles className="h-8 w-8 mx-auto mb-2" />
-                            <p className="font-bold">Click to Reveal</p>
-                            <p className="text-sm opacity-90">Scratch Card</p>
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Click the card above to reveal your coupon code
-                          </p>
+                        <div className="flex justify-center">
+                          <ScratchCard
+                            couponCode={reward.coupon_code}
+                            amount={reward.amount}
+                            onReveal={() => handleScratchCard(reward.id)}
+                          />
                         </div>
                       )}
                     </CardContent>
