@@ -9,6 +9,8 @@ interface UserProfile {
   full_name: string | null;
   email: string | null;
   avatar_url: string | null;
+  due_coins: number;
+  welcome_bonus_claimed: boolean;
 }
 
 interface AuthContextType {
@@ -19,6 +21,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  claimWelcomeBonus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,6 +57,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUserProfile(data);
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
+    }
+  };
+
+  const claimWelcomeBonus = async () => {
+    if (!user || !userProfile || userProfile.welcome_bonus_claimed) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ welcome_bonus_claimed: true })
+        .eq('id', user.id);
+
+      if (error) throw error;
+
+      // Refresh user profile
+      await fetchUserProfile(user.id);
+      
+      toast({
+        title: "Welcome bonus claimed!",
+        description: "You got free '100' credits and use it and shoot the procrastination",
+      });
+    } catch (error: any) {
+      console.error('Error claiming welcome bonus:', error);
     }
   };
 
@@ -196,6 +222,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signUp,
       signIn,
       signOut,
+      claimWelcomeBonus,
     }}>
       {children}
     </AuthContext.Provider>

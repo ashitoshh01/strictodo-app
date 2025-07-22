@@ -6,12 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Clock, DollarSign, CheckCircle, XCircle, Upload, IndianRupee } from 'lucide-react';
+import { Plus, Clock, DollarSign, CheckCircle, XCircle, Upload, IndianRupee, Gift } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const { tasks, loading } = useTasks();
+  const { userProfile, claimWelcomeBonus } = useAuth();
+  const [showWelcomeBonus, setShowWelcomeBonus] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -21,6 +24,13 @@ const Dashboard = () => {
     setIsDarkMode(shouldUseDark);
     document.documentElement.classList.toggle('dark', shouldUseDark);
   }, []);
+
+  useEffect(() => {
+    // Show welcome bonus if user hasn't claimed it yet
+    if (userProfile && !userProfile.welcome_bonus_claimed && !loading) {
+      setShowWelcomeBonus(true);
+    }
+  }, [userProfile, loading]);
 
   const toggleTheme = () => {
     const newTheme = !isDarkMode;
@@ -50,8 +60,13 @@ const Dashboard = () => {
   };
 
   const completedTasks = tasks.filter(task => task.status === 'verified').length;
-  const totalStake = tasks.reduce((sum, task) => sum + task.money_at_stake, 0);
-  const earnedAmount = tasks.filter(task => task.status === 'verified').reduce((sum, task) => sum + task.money_at_stake, 0);
+  const totalStake = tasks.reduce((sum, task) => sum + task.due_coins, 0);
+  const earnedCoins = tasks.filter(task => task.status === 'verified').reduce((sum, task) => sum + task.due_coins, 0);
+
+  const handleClaimWelcomeBonus = async () => {
+    await claimWelcomeBonus();
+    setShowWelcomeBonus(false);
+  };
 
   if (loading) {
     return (
@@ -72,6 +87,35 @@ const Dashboard = () => {
       
       <main className="container mx-auto px-4 py-8">
         <div className="space-y-8">
+          {/* Welcome Bonus Card */}
+          {showWelcomeBonus && (
+            <Card className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-green-100 dark:bg-green-800 rounded-full">
+                      <Gift className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">
+                        Welcome Bonus Available!
+                      </h3>
+                      <p className="text-green-600 dark:text-green-400">
+                        You got free '100' credits and use it and shoot the procrastination
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    onClick={handleClaimWelcomeBonus}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    Claim Bonus
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
@@ -87,7 +131,18 @@ const Dashboard = () => {
           </div>
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Due Coins</CardTitle>
+                <DollarSign className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{userProfile?.due_coins || 0}</div>
+                <p className="text-xs text-muted-foreground">Available balance</p>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
@@ -114,22 +169,22 @@ const Dashboard = () => {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Stake</CardTitle>
-                <IndianRupee className="h-4 w-4 text-yellow-500" />
+                <CardTitle className="text-sm font-medium">Coins at Stake</CardTitle>
+                <DollarSign className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">₹{totalStake}</div>
-                <p className="text-xs text-muted-foreground">Money at risk</p>
+                <div className="text-2xl font-bold">{totalStake}</div>
+                <p className="text-xs text-muted-foreground">Coins at risk</p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Earned</CardTitle>
-                <IndianRupee className="h-4 w-4 text-green-500" />
+                <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">₹{earnedAmount}</div>
+                <div className="text-2xl font-bold">{earnedCoins}</div>
                 <p className="text-xs text-muted-foreground">From completed tasks</p>
               </CardContent>
             </Card>
@@ -173,8 +228,8 @@ const Dashboard = () => {
                             Due: {new Date(task.due_date).toLocaleDateString()} at {new Date(task.due_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                           <div className="flex items-center">
-                            <IndianRupee className="h-4 w-4 mr-1" />
-                            ₹{task.money_at_stake}
+                            <DollarSign className="h-4 w-4 mr-1" />
+                            {task.due_coins} coins
                           </div>
                         </div>
                         {task.status === 'pending' && (

@@ -18,26 +18,32 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          due_coins: number | null
           email: string | null
           full_name: string | null
           id: string
           updated_at: string
+          welcome_bonus_claimed: boolean | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          due_coins?: number | null
           email?: string | null
           full_name?: string | null
           id: string
           updated_at?: string
+          welcome_bonus_claimed?: boolean | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string
+          due_coins?: number | null
           email?: string | null
           full_name?: string | null
           id?: string
           updated_at?: string
+          welcome_bonus_claimed?: boolean | null
         }
         Relationships: []
       }

@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, IndianRupee, Target, ArrowLeft } from 'lucide-react';
+import { CalendarIcon, DollarSign, Target, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useTasks } from '@/hooks/useTasks';
@@ -27,7 +27,7 @@ const AddTask = () => {
     description: '',
     dueDate: undefined as Date | undefined,
     dueTime: '',
-    moneyAtStake: ''
+    dueCoins: ''
   });
 
   useEffect(() => {
@@ -77,7 +77,7 @@ const AddTask = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.title || !formData.description || !formData.dueDate || !formData.dueTime || !formData.moneyAtStake) {
+    if (!formData.title || !formData.description || !formData.dueDate || !formData.dueTime || !formData.dueCoins) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -86,10 +86,10 @@ const AddTask = () => {
       return;
     }
 
-    if (parseFloat(formData.moneyAtStake) <= 0) {
+    if (parseFloat(formData.dueCoins) <= 0) {
       toast({
         title: "Error",
-        description: "Money at stake must be greater than 0",
+        description: "Due coins must be greater than 0",
         variant: "destructive"
       });
       return;
@@ -117,7 +117,7 @@ const AddTask = () => {
         title: formData.title,
         description: formData.description,
         due_date: dueDateTime.toISOString(),
-        money_at_stake: parseFloat(formData.moneyAtStake),
+        due_coins: parseFloat(formData.dueCoins),
       });
 
       toast({
@@ -174,7 +174,7 @@ const AddTask = () => {
             </div>
             <h1 className="text-3xl font-bold">Create New Task</h1>
             <p className="text-muted-foreground">
-              Set a goal, put money on the line, and prove you completed it
+              Set a goal, put due coins on the line, and prove you completed it
             </p>
           </div>
 
@@ -268,23 +268,23 @@ const AddTask = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="moneyAtStake">Money at Stake (₹)</Label>
+                  <Label htmlFor="dueCoins">Due Coins at Stake</Label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="moneyAtStake"
+                      id="dueCoins"
                       type="number"
                       min="1"
-                      step="0.01"
-                      placeholder="100.00"
+                      step="1"
+                      placeholder="50"
                       className="pl-10"
-                      value={formData.moneyAtStake}
-                      onChange={(e) => handleInputChange('moneyAtStake', e.target.value)}
+                      value={formData.dueCoins}
+                      onChange={(e) => handleInputChange('dueCoins', e.target.value)}
                       required
                     />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    This amount will be at risk if you don't complete the task
+                    These coins will be at risk if you don't complete the task
                   </p>
                 </div>
 

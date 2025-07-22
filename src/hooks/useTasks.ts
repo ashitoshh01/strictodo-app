@@ -9,7 +9,7 @@ export interface Task {
   title: string;
   description: string;
   due_date: string;
-  money_at_stake: number;
+  due_coins: number;
   status: 'pending' | 'submitted' | 'verified' | 'failed';
   proof_url?: string;
   created_at: string;
@@ -51,7 +51,7 @@ export const useTasks = () => {
     title: string;
     description: string;
     due_date: string;
-    money_at_stake: number;
+    due_coins: number;
   }) => {
     if (!user) throw new Error('User not authenticated');
 
