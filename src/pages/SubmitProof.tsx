@@ -230,7 +230,7 @@ Be strict and thorough in your analysis.`;
 
         // Create reward in database
         try {
-          const reward = await createReward(task.id, task.money_at_stake);
+          const reward = await createReward(task.id, task.due_coins);
           console.log('Reward created successfully:', reward);
         } catch (rewardError) {
           console.error('Failed to create reward:', rewardError);
@@ -318,10 +318,10 @@ Be strict and thorough in your analysis.`;
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between text-sm">
-                <span>Money at stake:</span>
+                <span>Due coins at stake:</span>
                 <span className="font-semibold text-green-600 flex items-center">
                   <IndianRupee className="h-4 w-4 mr-1" />
-                  ₹{task.money_at_stake}
+                  {task.due_coins}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm mt-2">
@@ -338,7 +338,7 @@ Be strict and thorough in your analysis.`;
             <div className="text-center space-y-4">
               <ScratchCard 
                 couponCode={rewardCoupon}
-                amount={task.money_at_stake}
+                amount={task.due_coins}
                 onReveal={() => {
                   setTimeout(() => {
                     navigate('/dashboard');

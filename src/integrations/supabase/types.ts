@@ -89,9 +89,9 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          due_coins: number
           due_date: string
           id: string
-          money_at_stake: number
           proof_url: string | null
           status: string
           title: string
@@ -101,9 +101,9 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          due_coins: number
           due_date: string
           id?: string
-          money_at_stake: number
           proof_url?: string | null
           status?: string
           title: string
@@ -113,9 +113,9 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          due_coins?: number
           due_date?: string
           id?: string
-          money_at_stake?: number
           proof_url?: string | null
           status?: string
           title?: string
