@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Clock, DollarSign, CheckCircle, XCircle, Upload, IndianRupee, Gift } from 'lucide-react';
+import { Plus, Clock, CheckCircle, XCircle, Upload, Gift } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/contexts/AuthContext';
+import { CoinIcon } from '@/components/ui/coin-icon';
 
 const Dashboard = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
@@ -135,7 +136,7 @@ const Dashboard = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Due Coins</CardTitle>
-                <DollarSign className="h-4 w-4 text-blue-500" />
+                <CoinIcon className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{userProfile?.due_coins || 0}</div>
@@ -170,7 +171,7 @@ const Dashboard = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Coins at Stake</CardTitle>
-                <DollarSign className="h-4 w-4 text-yellow-500" />
+                <CoinIcon className="h-4 w-4 text-yellow-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{totalStake}</div>
@@ -181,7 +182,7 @@ const Dashboard = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Earned</CardTitle>
-                <DollarSign className="h-4 w-4 text-green-500" />
+                <CoinIcon className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{earnedCoins}</div>
@@ -228,7 +229,7 @@ const Dashboard = () => {
                             Due: {new Date(task.due_date).toLocaleDateString()} at {new Date(task.due_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                           </div>
                           <div className="flex items-center">
-                            <DollarSign className="h-4 w-4 mr-1" />
+                            <CoinIcon className="h-4 w-4 mr-1 text-yellow-500" />
                             {task.due_coins} coins
                           </div>
                         </div>

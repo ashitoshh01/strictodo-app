@@ -10,10 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from 'date-fns';
-import { CalendarIcon, DollarSign, Target, ArrowLeft } from 'lucide-react';
+import { CalendarIcon, Target, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useTasks } from '@/hooks/useTasks';
+import { CoinIcon } from '@/components/ui/coin-icon';
 
 const AddTask = () => {
   const navigate = useNavigate();
@@ -122,7 +123,7 @@ const AddTask = () => {
 
       toast({
         title: "Success!",
-        description: "Task created successfully",
+        description: "Task created successfully. Due coins have been deducted from your balance.",
       });
 
       navigate('/dashboard');
@@ -270,7 +271,7 @@ const AddTask = () => {
                 <div className="space-y-2">
                   <Label htmlFor="dueCoins">Due Coins at Stake</Label>
                   <div className="relative">
-                    <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <CoinIcon className="absolute left-3 top-3 h-4 w-4 text-yellow-500" />
                     <Input
                       id="dueCoins"
                       type="number"
@@ -284,7 +285,7 @@ const AddTask = () => {
                     />
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    These coins will be at risk if you don't complete the task
+                    These coins will be deducted from your balance and returned if you complete the task
                   </p>
                 </div>
 
