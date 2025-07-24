@@ -58,6 +58,12 @@ const AddTask = () => {
     return `${hours}:${minutes}`;
   };
 
+  const isSameDay = (date1: Date, date2: Date) => {
+    return date1.getFullYear() === date2.getFullYear() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getDate() === date2.getDate();
+  };
+
   const isTimeValid = (selectedDate: Date | undefined, timeString: string) => {
     if (!selectedDate || !timeString) return true;
     
@@ -67,7 +73,7 @@ const AddTask = () => {
     selectedDateTime.setHours(hours, minutes, 0, 0);
     
     // If selected date is today, time must be in the future
-    if (selectedDate.toDateString() === now.toDateString()) {
+    if (isSameDay(selectedDate, now)) {
       return selectedDateTime > now;
     }
     
@@ -146,12 +152,18 @@ const AddTask = () => {
     const selectedDate = new Date(formData.dueDate);
     
     // If selected date is today, minimum time is current time
-    if (selectedDate.toDateString() === now.toDateString()) {
+    if (isSameDay(selectedDate, now)) {
       return getCurrentTimeString();
     }
     
     // For future dates, no minimum time restriction
     return '';
+  };
+
+  const isSelectedDateToday = () => {
+    if (!formData.dueDate) return false;
+    const now = new Date();
+    return isSameDay(formData.dueDate, now);
   };
 
   return (
@@ -260,7 +272,7 @@ const AddTask = () => {
                       onChange={(e) => handleInputChange('dueTime', e.target.value)}
                       required
                     />
-                    {formData.dueDate && formData.dueDate.toDateString() === new Date().toDateString() && (
+                    {isSelectedDateToday() && (
                       <p className="text-xs text-muted-foreground">
                         For today's date, select a future time
                       </p>
