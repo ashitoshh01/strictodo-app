@@ -23,7 +23,6 @@ interface AuthContextType {
   signInWithGoogle: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   claimWelcomeBonus: () => Promise<void>;
-  checkOverdueTasks: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,7 +41,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
-  const overdueTasksChecked = useRef(false);
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
@@ -62,50 +60,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Error in fetchUserProfile:', error);
     }
   }, []);
-
-  const checkOverdueTasks = useCallback(async () => {
-    if (!user || overdueTasksChecked.current) return;
-
-    try {
-      console.log('Checking for overdue tasks...');
-      overdueTasksChecked.current = true;
-      
-      // Get all pending tasks that are overdue
-      const { data: overdueTasks, error: fetchError } = await supabase
-        .from('tasks')
-        .select('id, title, due_date')
-        .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .lt('due_date', new Date().toISOString());
-
-      if (fetchError) {
-        console.error('Error fetching overdue tasks:', fetchError);
-        return;
-      }
-
-      if (overdueTasks && overdueTasks.length > 0) {
-        console.log(`Found ${overdueTasks.length} overdue tasks, marking as failed...`);
-        
-        // Mark overdue tasks as failed
-        const { error: updateError } = await supabase
-          .from('tasks')
-          .update({ status: 'failed', updated_at: new Date().toISOString() })
-          .in('id', overdueTasks.map(task => task.id));
-
-        if (updateError) {
-          console.error('Error updating overdue tasks:', updateError);
-        } else {
-          toast({
-            title: "Tasks updated",
-            description: `${overdueTasks.length} overdue task(s) have been marked as failed.`,
-            variant: "destructive"
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error in checkOverdueTasks:', error);
-    }
-  }, [user, toast]);
 
   const claimWelcomeBonus = useCallback(async () => {
     if (!user || !userProfile || userProfile.welcome_bonus_claimed) return;
@@ -144,13 +98,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Reset the overdue tasks check flag for new sessions
-          overdueTasksChecked.current = false;
           // Fetch user profile when user is authenticated
           fetchUserProfile(session.user.id);
         } else {
           setUserProfile(null);
-          overdueTasksChecked.current = false;
         }
         
         setLoading(false);
@@ -163,7 +114,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        overdueTasksChecked.current = false;
         fetchUserProfile(session.user.id);
       }
       
@@ -172,13 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => subscription.unsubscribe();
   }, [fetchUserProfile]);
-
-  // Check for overdue tasks only once when both user and userProfile are available
-  useEffect(() => {
-    if (user && userProfile && !overdueTasksChecked.current) {
-      checkOverdueTasks();
-    }
-  }, [user, userProfile, checkOverdueTasks]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
@@ -280,7 +223,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      overdueTasksChecked.current = false;
       const { error } = await supabase.auth.signOut();
       if (error) {
         toast({
@@ -314,7 +256,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       signInWithGoogle,
       signOut,
       claimWelcomeBonus,
-      checkOverdueTasks,
     }}>
       {children}
     </AuthContext.Provider>

@@ -47,6 +47,52 @@ export const useTasks = () => {
     }
   };
 
+  const checkAndMarkOverdueTasks = async () => {
+    if (!user) return;
+
+    try {
+      console.log('Checking for overdue tasks...');
+      
+      // Get all pending tasks that are overdue
+      const { data: overdueTasks, error: fetchError } = await supabase
+        .from('tasks')
+        .select('id, title, due_date')
+        .eq('user_id', user.id)
+        .eq('status', 'pending')
+        .lt('due_date', new Date().toISOString());
+
+      if (fetchError) {
+        console.error('Error fetching overdue tasks:', fetchError);
+        return;
+      }
+
+      if (overdueTasks && overdueTasks.length > 0) {
+        console.log(`Found ${overdueTasks.length} overdue tasks, marking as failed...`);
+        
+        // Mark overdue tasks as failed
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update({ status: 'failed', updated_at: new Date().toISOString() })
+          .in('id', overdueTasks.map(task => task.id));
+
+        if (updateError) {
+          console.error('Error updating overdue tasks:', updateError);
+        } else {
+          toast({
+            title: "Tasks updated",
+            description: `${overdueTasks.length} overdue task(s) have been marked as failed.`,
+            variant: "destructive"
+          });
+          
+          // Refresh the tasks list to reflect the changes
+          await fetchTasks();
+        }
+      }
+    } catch (error) {
+      console.error('Error in checkAndMarkOverdueTasks:', error);
+    }
+  };
+
   const createTask = async (taskData: {
     title: string;
     description: string;
@@ -88,6 +134,7 @@ export const useTasks = () => {
     loading,
     createTask,
     updateTask,
+    checkAndMarkOverdueTasks,
     refetch: fetchTasks
   };
 };
