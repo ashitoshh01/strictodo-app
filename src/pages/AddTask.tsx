@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
@@ -58,40 +58,41 @@ const AddTask = () => {
     return `${hours}:${minutes}`;
   }, []);
 
-  // Memoize date comparisons to prevent infinite loops
-  const dateValidation = useMemo(() => {
-    const now = new Date();
-    const selectedDate = formData.dueDate;
+  const isTimeValid = useCallback(() => {
+    if (!formData.dueDate || !formData.dueTime) return true;
     
-    if (!selectedDate) {
-      return {
-        isToday: false,
-        isTimeValid: true,
-        minTime: ''
-      };
-    }
+    const now = new Date();
+    const selectedDate = new Date(formData.dueDate);
+    const isToday = selectedDate.toDateString() === now.toDateString();
+    
+    if (!isToday) return true;
+    
+    const [hours, minutes] = formData.dueTime.split(':').map(Number);
+    const selectedDateTime = new Date(selectedDate);
+    selectedDateTime.setHours(hours, minutes, 0, 0);
+    
+    return selectedDateTime > now;
+  }, [formData.dueDate, formData.dueTime]);
 
-    const isToday = selectedDate.getFullYear() === now.getFullYear() &&
-                   selectedDate.getMonth() === now.getMonth() &&
-                   selectedDate.getDate() === now.getDate();
+  const getMinTime = useCallback(() => {
+    if (!formData.dueDate) return '';
+    
+    const now = new Date();
+    const selectedDate = new Date(formData.dueDate);
+    const isToday = selectedDate.toDateString() === now.toDateString();
+    
+    if (!isToday) return '';
+    
+    return getCurrentTimeString();
+  }, [formData.dueDate, getCurrentTimeString]);
 
-    let isTimeValid = true;
-    let minTime = '';
-
-    if (formData.dueTime && isToday) {
-      const [hours, minutes] = formData.dueTime.split(':').map(Number);
-      const selectedDateTime = new Date(selectedDate);
-      selectedDateTime.setHours(hours, minutes, 0, 0);
-      isTimeValid = selectedDateTime > now;
-      minTime = getCurrentTimeString();
-    }
-
-    return {
-      isToday,
-      isTimeValid,
-      minTime: isToday ? minTime : ''
-    };
-  }, [formData.dueDate, formData.dueTime, getCurrentTimeString]);
+  const isToday = useCallback(() => {
+    if (!formData.dueDate) return false;
+    
+    const now = new Date();
+    const selectedDate = new Date(formData.dueDate);
+    return selectedDate.toDateString() === now.toDateString();
+  }, [formData.dueDate]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -118,7 +119,7 @@ const AddTask = () => {
     }
 
     // Validate time selection
-    if (!dateValidation.isTimeValid) {
+    if (!isTimeValid()) {
       toast({
         title: "Error",
         description: "For today's date, please select a future time",
@@ -162,7 +163,7 @@ const AddTask = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, dateValidation.isTimeValid, createTask, toast, navigate]);
+  }, [formData, isTimeValid, createTask, toast, navigate]);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -265,12 +266,12 @@ const AddTask = () => {
                     <Input
                       id="dueTime"
                       type="time"
-                      min={dateValidation.minTime}
+                      min={getMinTime()}
                       value={formData.dueTime}
                       onChange={(e) => handleInputChange('dueTime', e.target.value)}
                       required
                     />
-                    {dateValidation.isToday && (
+                    {isToday() && (
                       <p className="text-xs text-muted-foreground">
                         For today's date, select a future time
                       </p>

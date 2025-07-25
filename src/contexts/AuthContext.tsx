@@ -1,5 +1,5 @@
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -42,8 +42,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const overdueTasksChecked = useRef(false);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -60,13 +61,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
     }
-  };
+  }, []);
 
-  const checkOverdueTasks = async () => {
-    if (!user) return;
+  const checkOverdueTasks = useCallback(async () => {
+    if (!user || overdueTasksChecked.current) return;
 
     try {
       console.log('Checking for overdue tasks...');
+      overdueTasksChecked.current = true;
       
       // Get all pending tasks that are overdue
       const { data: overdueTasks, error: fetchError } = await supabase
@@ -103,9 +105,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('Error in checkOverdueTasks:', error);
     }
-  };
+  }, [user, toast]);
 
-  const claimWelcomeBonus = async () => {
+  const claimWelcomeBonus = useCallback(async () => {
     if (!user || !userProfile || userProfile.welcome_bonus_claimed) return;
 
     try {
@@ -131,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         variant: "destructive"
       });
     }
-  };
+  }, [user, userProfile, fetchUserProfile, toast]);
 
   useEffect(() => {
     // Set up auth state listener first
@@ -142,12 +144,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // Reset the overdue tasks check flag for new sessions
+          overdueTasksChecked.current = false;
           // Fetch user profile when user is authenticated
-          setTimeout(() => {
-            fetchUserProfile(session.user.id);
-          }, 0);
+          fetchUserProfile(session.user.id);
         } else {
           setUserProfile(null);
+          overdueTasksChecked.current = false;
         }
         
         setLoading(false);
@@ -160,6 +163,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        overdueTasksChecked.current = false;
         fetchUserProfile(session.user.id);
       }
       
@@ -167,14 +171,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchUserProfile]);
 
-  // Check for overdue tasks when user logs in
+  // Check for overdue tasks only once when both user and userProfile are available
   useEffect(() => {
-    if (user && userProfile) {
+    if (user && userProfile && !overdueTasksChecked.current) {
       checkOverdueTasks();
     }
-  }, [user, userProfile]);
+  }, [user, userProfile, checkOverdueTasks]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
@@ -276,6 +280,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      overdueTasksChecked.current = false;
       const { error } = await supabase.auth.signOut();
       if (error) {
         toast({
