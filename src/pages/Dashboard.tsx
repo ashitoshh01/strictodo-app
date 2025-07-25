@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -5,17 +6,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Plus, Clock, CheckCircle, XCircle, Upload, Gift, RefreshCw } from 'lucide-react';
+import { Plus, Clock, CheckCircle, XCircle, Upload, Gift } from 'lucide-react';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { CoinIcon } from '@/components/ui/coin-icon';
 
 const Dashboard = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const { tasks, loading, refetch } = useTasks();
-  const { userProfile, claimWelcomeBonus, checkOverdueTasks } = useAuth();
+  const { tasks, loading } = useTasks();
+  const { userProfile, claimWelcomeBonus } = useAuth();
   const [showWelcomeBonus, setShowWelcomeBonus] = useState(false);
-  const [isCheckingOverdue, setIsCheckingOverdue] = useState(false);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -38,13 +38,6 @@ const Dashboard = () => {
     setIsDarkMode(newTheme);
     document.documentElement.classList.toggle('dark', newTheme);
     localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
-
-  const handleCheckOverdueTasks = async () => {
-    setIsCheckingOverdue(true);
-    await checkOverdueTasks();
-    await refetch(); // Refresh tasks after checking
-    setIsCheckingOverdue(false);
   };
 
   const getStatusColor = (status: string) => {
@@ -109,7 +102,7 @@ const Dashboard = () => {
                         Welcome Bonus Available!
                       </h3>
                       <p className="text-green-600 dark:text-green-400">
-                        Claim your free 100 credits to start your productivity journey!
+                        You got free '100' credits and use it and shoot the procrastination
                       </p>
                     </div>
                   </div>
@@ -130,23 +123,12 @@ const Dashboard = () => {
               <h1 className="text-3xl font-bold">Dashboard</h1>
               <p className="text-muted-foreground">Track your productivity and achievements</p>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={handleCheckOverdueTasks}
-                disabled={isCheckingOverdue}
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${isCheckingOverdue ? 'animate-spin' : ''}`} />
-                Check Overdue
+            <Link to="/add-task">
+              <Button className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Task
               </Button>
-              <Link to="/add-task">
-                <Button className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create New Task
-                </Button>
-              </Link>
-            </div>
+            </Link>
           </div>
 
           {/* Stats Cards */}

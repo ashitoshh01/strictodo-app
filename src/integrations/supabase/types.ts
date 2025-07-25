@@ -129,10 +129,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      claim_welcome_bonus: {
-        Args: { user_id: string }
-        Returns: undefined
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

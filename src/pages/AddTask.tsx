@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
@@ -40,63 +40,43 @@ const AddTask = () => {
     document.documentElement.classList.toggle('dark', shouldUseDark);
   }, []);
 
-  const toggleTheme = useCallback(() => {
+  const toggleTheme = () => {
     const newTheme = !isDarkMode;
     setIsDarkMode(newTheme);
     document.documentElement.classList.toggle('dark', newTheme);
     localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  }, [isDarkMode]);
+  };
 
-  const handleInputChange = useCallback((field: string, value: any) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  }, []);
+  };
 
-  const getCurrentTimeString = useCallback(() => {
+  const getCurrentTimeString = () => {
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, '0');
     const minutes = now.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
-  }, []);
+  };
 
-  // Memoize date comparisons to prevent infinite loops
-  const dateValidation = useMemo(() => {
+  const isTimeValid = (selectedDate: Date | undefined, timeString: string) => {
+    if (!selectedDate || !timeString) return true;
+    
     const now = new Date();
-    const selectedDate = formData.dueDate;
+    const selectedDateTime = new Date(selectedDate);
+    const [hours, minutes] = timeString.split(':').map(Number);
+    selectedDateTime.setHours(hours, minutes, 0, 0);
     
-    if (!selectedDate) {
-      return {
-        isToday: false,
-        isTimeValid: true,
-        minTime: ''
-      };
+    // If selected date is today, time must be in the future
+    if (selectedDate.toDateString() === now.toDateString()) {
+      return selectedDateTime > now;
     }
+    
+    // If selected date is in the future, any time is valid
+    return true;
+  };
 
-    const isToday = selectedDate.getFullYear() === now.getFullYear() &&
-                   selectedDate.getMonth() === now.getMonth() &&
-                   selectedDate.getDate() === now.getDate();
-
-    let isTimeValid = true;
-    let minTime = '';
-
-    if (formData.dueTime && isToday) {
-      const [hours, minutes] = formData.dueTime.split(':').map(Number);
-      const selectedDateTime = new Date(selectedDate);
-      selectedDateTime.setHours(hours, minutes, 0, 0);
-      isTimeValid = selectedDateTime > now;
-      minTime = getCurrentTimeString();
-    }
-
-    return {
-      isToday,
-      isTimeValid,
-      minTime: isToday ? minTime : ''
-    };
-  }, [formData.dueDate, formData.dueTime, getCurrentTimeString]);
-
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log('Form submission started');
     
     if (!formData.title || !formData.description || !formData.dueDate || !formData.dueTime || !formData.dueCoins) {
       toast({
@@ -107,8 +87,7 @@ const AddTask = () => {
       return;
     }
 
-    const dueCoins = parseFloat(formData.dueCoins);
-    if (dueCoins <= 0) {
+    if (parseFloat(formData.dueCoins) <= 0) {
       toast({
         title: "Error",
         description: "Due coins must be greater than 0",
@@ -118,7 +97,7 @@ const AddTask = () => {
     }
 
     // Validate time selection
-    if (!dateValidation.isTimeValid) {
+    if (!isTimeValid(formData.dueDate, formData.dueTime)) {
       toast({
         title: "Error",
         description: "For today's date, please select a future time",
@@ -130,8 +109,6 @@ const AddTask = () => {
     setIsSubmitting(true);
 
     try {
-      console.log('Creating task...');
-      
       // Combine date and time
       const [hours, minutes] = formData.dueTime.split(':');
       const dueDateTime = new Date(formData.dueDate);
@@ -141,10 +118,8 @@ const AddTask = () => {
         title: formData.title,
         description: formData.description,
         due_date: dueDateTime.toISOString(),
-        due_coins: dueCoins,
+        due_coins: parseFloat(formData.dueCoins),
       });
-
-      console.log('Task created successfully');
 
       toast({
         title: "Success!",
@@ -153,7 +128,6 @@ const AddTask = () => {
 
       navigate('/dashboard');
     } catch (error: any) {
-      console.error('Task creation error:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to create task. Please try again.",
@@ -162,7 +136,23 @@ const AddTask = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, dateValidation.isTimeValid, createTask, toast, navigate]);
+  };
+
+  // Get minimum time for today
+  const getMinTime = () => {
+    if (!formData.dueDate) return '';
+    
+    const now = new Date();
+    const selectedDate = new Date(formData.dueDate);
+    
+    // If selected date is today, minimum time is current time
+    if (selectedDate.toDateString() === now.toDateString()) {
+      return getCurrentTimeString();
+    }
+    
+    // For future dates, no minimum time restriction
+    return '';
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -265,12 +255,12 @@ const AddTask = () => {
                     <Input
                       id="dueTime"
                       type="time"
-                      min={dateValidation.minTime}
+                      min={getMinTime()}
                       value={formData.dueTime}
                       onChange={(e) => handleInputChange('dueTime', e.target.value)}
                       required
                     />
-                    {dateValidation.isToday && (
+                    {formData.dueDate && formData.dueDate.toDateString() === new Date().toDateString() && (
                       <p className="text-xs text-muted-foreground">
                         For today's date, select a future time
                       </p>

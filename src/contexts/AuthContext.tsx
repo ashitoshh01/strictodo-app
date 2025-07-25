@@ -20,10 +20,8 @@ interface AuthContextType {
   loading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signInWithGoogle: () => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   claimWelcomeBonus: () => Promise<void>;
-  checkOverdueTasks: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,57 +60,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const checkOverdueTasks = async () => {
-    if (!user) return;
-
-    try {
-      console.log('Checking for overdue tasks...');
-      
-      // Get all pending tasks that are overdue
-      const { data: overdueTasks, error: fetchError } = await supabase
-        .from('tasks')
-        .select('id, title, due_date')
-        .eq('user_id', user.id)
-        .eq('status', 'pending')
-        .lt('due_date', new Date().toISOString());
-
-      if (fetchError) {
-        console.error('Error fetching overdue tasks:', fetchError);
-        return;
-      }
-
-      if (overdueTasks && overdueTasks.length > 0) {
-        console.log(`Found ${overdueTasks.length} overdue tasks, marking as failed...`);
-        
-        // Mark overdue tasks as failed
-        const { error: updateError } = await supabase
-          .from('tasks')
-          .update({ status: 'failed', updated_at: new Date().toISOString() })
-          .in('id', overdueTasks.map(task => task.id));
-
-        if (updateError) {
-          console.error('Error updating overdue tasks:', updateError);
-        } else {
-          toast({
-            title: "Tasks updated",
-            description: `${overdueTasks.length} overdue task(s) have been marked as failed.`,
-            variant: "destructive"
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error in checkOverdueTasks:', error);
-    }
-  };
-
   const claimWelcomeBonus = async () => {
     if (!user || !userProfile || userProfile.welcome_bonus_claimed) return;
 
     try {
-      // Call the Supabase function to claim the bonus
-      const { error } = await supabase.rpc('claim_welcome_bonus', {
-        user_id: user.id
-      });
+      const { error } = await supabase
+        .from('profiles')
+        .update({ welcome_bonus_claimed: true })
+        .eq('id', user.id);
 
       if (error) throw error;
 
@@ -121,15 +76,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       toast({
         title: "Welcome bonus claimed!",
-        description: "You received 100 free credits to start your productivity journey!",
+        description: "You got free '100' credits and use it and shoot the procrastination",
       });
     } catch (error: any) {
       console.error('Error claiming welcome bonus:', error);
-      toast({
-        title: "Error claiming bonus",
-        description: error.message || "Failed to claim welcome bonus",
-        variant: "destructive"
-      });
     }
   };
 
@@ -168,13 +118,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Check for overdue tasks when user logs in
-  useEffect(() => {
-    if (user && userProfile) {
-      checkOverdueTasks();
-    }
-  }, [user, userProfile]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     try {
@@ -246,34 +189,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithGoogle = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        }
-      });
-
-      if (error) {
-        toast({
-          title: "Google sign in failed",
-          description: error.message,
-          variant: "destructive",
-        });
-      }
-
-      return { error };
-    } catch (error: any) {
-      toast({
-        title: "Google sign in failed",
-        description: error.message || "An unexpected error occurred",
-        variant: "destructive",
-      });
-      return { error };
-    }
-  };
-
   const signOut = async () => {
     try {
       const { error } = await supabase.auth.signOut();
@@ -306,10 +221,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       signUp,
       signIn,
-      signInWithGoogle,
       signOut,
       claimWelcomeBonus,
-      checkOverdueTasks,
     }}>
       {children}
     </AuthContext.Provider>
