@@ -30,6 +30,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     }
   };
 
+  const getCardBorderColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'border-yellow-200 hover:border-yellow-300';
+      case 'submitted': return 'border-blue-200 hover:border-blue-300';
+      case 'verified': return 'border-green-200 hover:border-green-300 bg-green-50/30';
+      case 'failed': return 'border-red-200 hover:border-red-300 bg-red-50/30';
+      default: return 'border-gray-200 hover:border-gray-300';
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
@@ -54,10 +64,22 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     };
   };
 
+  const isOverdue = () => {
+    const now = new Date();
+    const dueDate = new Date(task.due_date);
+    return now > dueDate && task.status === 'pending';
+  };
+
+  const canSubmitProof = () => {
+    const now = new Date();
+    const dueDate = new Date(task.due_date);
+    return now <= dueDate && task.status === 'pending';
+  };
+
   const { date, time } = formatDate(task.due_date);
 
   return (
-    <Card className="hover:shadow-lg transition-all duration-200 hover:scale-[1.02]">
+    <Card className={`hover:shadow-lg transition-all duration-200 hover:scale-[1.02] border-2 ${getCardBorderColor(task.status)}`}>
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
           <CardHeader className="cursor-pointer">
@@ -69,9 +91,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 </div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-lg">{task.title}</h3>
-                  <Badge variant="secondary" className="text-xs">
-                    {task.status.toUpperCase()}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      {task.status.toUpperCase()}
+                    </Badge>
+                    {isOverdue() && (
+                      <Badge variant="destructive" className="text-xs">
+                        OVERDUE
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center text-green-600 font-semibold">
                   <CoinIcon className="h-4 w-4 mr-1 text-yellow-500" />
@@ -106,7 +135,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 </div>
               </div>
 
-              {task.status === 'pending' && !showUpload && (
+              {canSubmitProof() && !showUpload && (
                 <Button
                   onClick={() => setShowUpload(true)}
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
@@ -114,6 +143,26 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   <Upload className="h-4 w-4 mr-2" />
                   Submit Proof
                 </Button>
+              )}
+
+              {isOverdue() && task.status === 'pending' && (
+                <div className="text-center py-4 text-red-600">
+                  <p className="font-semibold">This task is overdue and will be marked as failed automatically.</p>
+                </div>
+              )}
+
+              {task.status === 'failed' && (
+                <div className="text-center py-4 text-red-600 bg-red-50 rounded-lg">
+                  <p className="font-semibold">Task Failed</p>
+                  <p className="text-sm">The deadline has passed and your coins have been forfeited.</p>
+                </div>
+              )}
+
+              {task.status === 'verified' && (
+                <div className="text-center py-4 text-green-600 bg-green-50 rounded-lg">
+                  <p className="font-semibold">✅ Task Verified Successfully!</p>
+                  <p className="text-sm">Your coins have been returned to your account.</p>
+                </div>
               )}
 
               {showUpload && !showReward && (

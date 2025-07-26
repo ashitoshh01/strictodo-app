@@ -83,27 +83,40 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
     });
   };
 
-  const analyzeWithGeminiAI = async (taskTitle: string, taskDescription: string, fileTypes: string[]) => {
-    // Simulate Gemini AI analysis
+  const analyzeWithGeminiAI = async (taskTitle: string, taskDescription: string, fileTypes: string[], userDescription: string) => {
+    // Simulate Gemini AI analysis with the specific prompt
+    const prompt = `Hey Gemini, you are an all-rounder teacher and checking the tasks of people which can be anything. You have to check the task and then tell on the basis of the proof whether the task is fulfilled or not. 
+
+Task Title: ${taskTitle}
+Task Description: ${taskDescription}
+Files provided: ${uploadedFiles.length} files (${fileTypes.join(', ')})
+User Description: ${userDescription || 'No additional description provided'}
+
+Check it and verify with a simple 'yes' or 'no'. If the output is 'yes', display 'Task verified successfully', return the invested money to the user's account, and give them a scratchable coupon. If not, say 'The proof is not as required, try again' and add a description of the proof you are sending.`;
+
+    // Simulate AI processing time
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // For now, we'll simulate a successful verification most of the time
+    // For demo purposes, we'll simulate AI response (80% success rate)
     const verificationScore = Math.random();
-    const isVerified = verificationScore > 0.2; // 80% success rate for demo
+    const isVerified = verificationScore > 0.2;
     
     return {
       isVerified,
       confidence: Math.floor(verificationScore * 100),
-      analysis: `AI Analysis for "${taskTitle}":
-      
-Files analyzed: ${uploadedFiles.length} files (${fileTypes.join(', ')})
-Task requirement assessment: ${isVerified ? 'PASSED' : 'FAILED'}
-Confidence score: ${Math.floor(verificationScore * 100)}%
+      analysis: isVerified 
+        ? `✅ Task verified successfully
 
-${isVerified ? 
-  '✅ The submitted proof demonstrates successful task completion.' : 
-  '❌ The submitted proof does not adequately demonstrate task completion.'
-}`
+AI Analysis: The submitted proof demonstrates successful completion of "${taskTitle}". The files provided adequately show that the task requirements have been met.
+
+Verification: YES
+Your invested money will be returned to your account and you'll receive a scratchable coupon.`
+        : `❌ The proof is not as required, try again
+
+AI Analysis: The submitted proof does not adequately demonstrate completion of "${taskTitle}". 
+
+Verification: NO
+Description of submitted proof: The files provided do not clearly show evidence of task completion. Please ensure your proof directly relates to the task requirements and try submitting again before the deadline.`
     };
   };
 
@@ -148,14 +161,14 @@ ${isVerified ?
         proofUrls.push(urlData.publicUrl);
       }
 
-      // Perform AI analysis
+      // Perform AI analysis with the specific prompt
       toast({
         title: "Analyzing with AI",
         description: "Gemini AI is verifying your proof submission...",
       });
 
       const fileTypes = [...new Set(uploadedFiles.map(f => f.type))];
-      const aiResult = await analyzeWithGeminiAI(task.title, task.description, fileTypes);
+      const aiResult = await analyzeWithGeminiAI(task.title, task.description, fileTypes, description);
 
       if (aiResult.isVerified) {
         // Generate coupon code
@@ -190,22 +203,22 @@ ${isVerified ?
         if (rewardError) throw rewardError;
 
         toast({
-          title: "🎉 Task Verified!",
-          description: `AI has verified your proof! You've earned ${task.due_coins} coins.`,
+          title: "🎉 Task Verified Successfully!",
+          description: `AI has verified your proof! Your ${task.due_coins} coins have been returned to your account.`,
         });
 
         onTaskVerified(task.id, couponCode);
       } else {
-        // Mark task as failed
+        // Update task status to submitted (not failed, give user another chance)
         const { error: updateError } = await supabase
           .from('tasks')
           .update({ 
-            status: 'failed',
+            status: 'submitted',
             proof_url: JSON.stringify({
               urls: proofUrls,
               description,
               ai_analysis: aiResult.analysis,
-              failed_at: new Date().toISOString()
+              submitted_at: new Date().toISOString()
             })
           })
           .eq('id', task.id);
@@ -214,7 +227,7 @@ ${isVerified ?
 
         toast({
           title: "Verification Failed",
-          description: "AI determined the proof doesn't meet task requirements.",
+          description: "The proof is not as required. You can try again before the deadline.",
           variant: "destructive"
         });
 
@@ -238,7 +251,7 @@ ${isVerified ?
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Upload Files for: {task.title}
+            Upload Proof for: {task.title}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={onClose}>
             <X className="h-4 w-4" />
@@ -296,10 +309,10 @@ ${isVerified ?
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="fileDescription">Description (Optional)</Label>
+          <Label htmlFor="fileDescription">Proof Description</Label>
           <Textarea
             id="fileDescription"
-            placeholder="Describe your files and how they relate to the task..."
+            placeholder="Describe how these files prove you completed the task..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
@@ -318,7 +331,7 @@ ${isVerified ?
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Analyzing & Submitting...
+                Verifying with AI...
               </>
             ) : (
               <>

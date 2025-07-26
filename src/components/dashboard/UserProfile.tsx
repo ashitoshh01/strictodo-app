@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -10,10 +11,15 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const UserProfile: React.FC = () => {
   const { userProfile, user, claimWelcomeBonus } = useAuth();
+  const navigate = useNavigate();
 
   const getInitials = (name: string | null) => {
     if (!name) return 'U';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const handleSettingsClick = () => {
+    navigate('/settings');
   };
 
   return (
@@ -68,7 +74,7 @@ const UserProfile: React.FC = () => {
                 )}
               </div>
               
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleSettingsClick}>
                 <Settings className="h-4 w-4 mr-1" />
                 Settings
               </Button>

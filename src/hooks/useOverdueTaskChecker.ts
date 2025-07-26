@@ -13,10 +13,10 @@ export const useOverdueTaskChecker = () => {
     // Check for overdue tasks immediately when user logs in
     checkAndMarkOverdueTasks();
 
-    // Set up a periodic check every 5 minutes
+    // Set up a periodic check every minute for more precision
     const intervalId = setInterval(() => {
       checkAndMarkOverdueTasks();
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 60 * 1000); // 1 minute
 
     return () => clearInterval(intervalId);
   }, [user, checkAndMarkOverdueTasks]);
