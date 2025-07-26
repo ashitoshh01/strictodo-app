@@ -10,6 +10,7 @@ import { Upload, X, FileText, Image, Video, FileArchive, File, Loader2 } from 'l
 import { useToast } from '@/hooks/use-toast';
 import { Task } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UploadedFile {
   file: File;
@@ -25,6 +26,7 @@ interface TaskFileUploadProps {
 
 const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVerified }) => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -115,6 +117,15 @@ ${isVerified ?
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to submit proof",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -166,10 +177,11 @@ ${isVerified ?
 
         if (updateError) throw updateError;
 
-        // Create reward
+        // Create reward with proper user_id
         const { error: rewardError } = await supabase
           .from('rewards')
           .insert({
+            user_id: user.id,
             task_id: task.id,
             coupon_code: couponCode,
             amount: task.due_coins,
