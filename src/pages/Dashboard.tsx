@@ -6,14 +6,17 @@ import { useOverdueTaskChecker } from '@/hooks/useOverdueTaskChecker';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Calendar, Clock, Trophy, Coins } from 'lucide-react';
+import { Plus, Calendar, Clock, Trophy, Coins, ChevronDown, ChevronUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
+import TaskFileUpload from '@/components/dashboard/TaskFileUpload';
+import { useState } from 'react';
 
 const Dashboard = () => {
   const { user, userProfile, claimWelcomeBonus } = useAuth();
   const { tasks, loading: tasksLoading } = useTasks();
   const { rewards, loading: rewardsLoading } = useRewards();
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   
   // Initialize the overdue task checker
   useOverdueTaskChecker();
@@ -44,6 +47,10 @@ const Dashboard = () => {
   const pendingTasks = tasks.filter(task => task.status === 'pending');
   const completedTasks = tasks.filter(task => task.status === 'verified');
   const failedTasks = tasks.filter(task => task.status === 'failed');
+
+  const handleTaskClick = (taskId: string) => {
+    setExpandedTaskId(expandedTaskId === taskId ? null : taskId);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -153,36 +160,56 @@ const Dashboard = () => {
               {tasks.length > 0 ? (
                 <div className="space-y-4">
                   {tasks.slice(0, 5).map((task) => (
-                    <div key={task.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="flex-1">
-                        <h4 className="font-semibold">{task.title}</h4>
-                        <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
-                        <div className="flex items-center space-x-4 mt-2 text-sm text-muted-foreground">
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>{format(new Date(task.due_date), 'MMM dd, yyyy')}</span>
+                    <div key={task.id}>
+                      <div 
+                        className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => handleTaskClick(task.id)}
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold">{task.title}</h4>
+                            <div className="flex items-center space-x-2">
+                              <Badge 
+                                variant={
+                                  task.status === 'verified' ? 'default' :
+                                  task.status === 'failed' ? 'destructive' :
+                                  task.status === 'submitted' ? 'secondary' : 'outline'
+                                }
+                              >
+                                {task.status}
+                              </Badge>
+                              {expandedTaskId === task.id ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="h-3 w-3" />
-                            <span>{format(new Date(task.due_date), 'hh:mm a')}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Coins className="h-3 w-3" />
-                            <span>{task.due_coins} credits</span>
+                          <p className="text-sm text-muted-foreground line-clamp-1">{task.description}</p>
+                          <div className="flex items-center space-x-4 mt-2 text-sm text-muted-foreground">
+                            <div className="flex items-center space-x-1">
+                              <Calendar className="h-3 w-3" />
+                              <span>{format(new Date(task.due_date), 'MMM dd, yyyy')}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Clock className="h-3 w-3" />
+                              <span>{format(new Date(task.due_date), 'hh:mm a')}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              <Coins className="h-3 w-3" />
+                              <span>{task.due_coins} credits</span>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div className="ml-4">
-                        <Badge 
-                          variant={
-                            task.status === 'verified' ? 'default' :
-                            task.status === 'failed' ? 'destructive' :
-                            task.status === 'submitted' ? 'secondary' : 'outline'
-                          }
-                        >
-                          {task.status}
-                        </Badge>
-                      </div>
+
+                      {/* File Upload Section */}
+                      {expandedTaskId === task.id && (
+                        <TaskFileUpload 
+                          task={task}
+                          onClose={() => setExpandedTaskId(null)}
+                        />
+                      )}
                     </div>
                   ))}
                 </div>
