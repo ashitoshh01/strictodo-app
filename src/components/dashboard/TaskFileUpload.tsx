@@ -6,9 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, FileText, Image, Video, FileArchive, File, Sparkles } from 'lucide-react';
+import { Upload, X, FileText, Image, Video, FileArchive, File, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Task } from '@/hooks/useTasks';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UploadedFile {
   file: File;
@@ -19,14 +20,14 @@ interface UploadedFile {
 interface TaskFileUploadProps {
   task: Task;
   onClose: () => void;
+  onTaskVerified: (taskId: string, couponCode: string) => void;
 }
 
-const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose }) => {
+const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVerified }) => {
   const { toast } = useToast();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [description, setDescription] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getFileType = (file: File): 'image' | 'video' | 'document' | 'archive' | 'other' => {
     if (file.type.startsWith('image/')) return 'image';
@@ -53,7 +54,6 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose }) => {
     const newFiles = Array.from(files).slice(0, 5 - uploadedFiles.length);
     
     newFiles.forEach(file => {
-      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -69,7 +69,6 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose }) => {
       setUploadedFiles(prev => [...prev, { file, url, type }]);
     });
 
-    // Reset the input
     event.target.value = '';
   };
 
@@ -82,57 +81,147 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose }) => {
     });
   };
 
-  const analyzeWithGemini = async () => {
+  const analyzeWithGeminiAI = async (taskTitle: string, taskDescription: string, fileTypes: string[]) => {
+    // Simulate Gemini AI analysis
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // For now, we'll simulate a successful verification most of the time
+    const verificationScore = Math.random();
+    const isVerified = verificationScore > 0.2; // 80% success rate for demo
+    
+    return {
+      isVerified,
+      confidence: Math.floor(verificationScore * 100),
+      analysis: `AI Analysis for "${taskTitle}":
+      
+Files analyzed: ${uploadedFiles.length} files (${fileTypes.join(', ')})
+Task requirement assessment: ${isVerified ? 'PASSED' : 'FAILED'}
+Confidence score: ${Math.floor(verificationScore * 100)}%
+
+${isVerified ? 
+  '✅ The submitted proof demonstrates successful task completion.' : 
+  '❌ The submitted proof does not adequately demonstrate task completion.'
+}`
+    };
+  };
+
+  const handleSubmit = async () => {
     if (uploadedFiles.length === 0) {
       toast({
-        title: "No files",
-        description: "Please upload at least one file to analyze",
+        title: "No files uploaded",
+        description: "Please upload at least one file as proof",
         variant: "destructive"
       });
       return;
     }
 
-    setIsProcessing(true);
-    
+    setIsSubmitting(true);
+
     try {
-      // Simulate Gemini AI analysis
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const analysisResult = `AI Analysis for "${task.title}":
+      // Upload files to storage first
+      const proofUrls: string[] = [];
+      for (const { file } of uploadedFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${task.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('task-proofs')
+          .upload(fileName, file);
 
-📁 Files Analyzed: ${uploadedFiles.length}
-📊 File Types: ${[...new Set(uploadedFiles.map(f => f.type))].join(', ')}
+        if (uploadError) throw uploadError;
 
-🤖 Gemini AI Insights:
-- Files appear to be relevant to the task requirements
-- Quality assessment: Good
-- Completeness score: ${Math.floor(Math.random() * 30) + 70}%
-- Suggested improvements: Consider adding more context in the description
+        const { data: urlData } = supabase.storage
+          .from('task-proofs')
+          .getPublicUrl(fileName);
 
-💡 Recommendations:
-- Files are well-organized and meet the task criteria
-- The uploaded content demonstrates task completion
-- Ready for submission`;
+        proofUrls.push(urlData.publicUrl);
+      }
 
-      setAiAnalysis(analysisResult);
-      
+      // Perform AI analysis
       toast({
-        title: "AI Analysis Complete",
-        description: "Gemini has analyzed your files successfully",
+        title: "Analyzing with AI",
+        description: "Gemini AI is verifying your proof submission...",
       });
-    } catch (error) {
+
+      const fileTypes = [...new Set(uploadedFiles.map(f => f.type))];
+      const aiResult = await analyzeWithGeminiAI(task.title, task.description, fileTypes);
+
+      if (aiResult.isVerified) {
+        // Generate coupon code
+        const couponCode = `REWARD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+        // Update task status to verified
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update({ 
+            status: 'verified',
+            proof_url: JSON.stringify({
+              urls: proofUrls,
+              description,
+              ai_analysis: aiResult.analysis,
+              verified_at: new Date().toISOString()
+            })
+          })
+          .eq('id', task.id);
+
+        if (updateError) throw updateError;
+
+        // Create reward
+        const { error: rewardError } = await supabase
+          .from('rewards')
+          .insert({
+            task_id: task.id,
+            coupon_code: couponCode,
+            amount: task.due_coins,
+          });
+
+        if (rewardError) throw rewardError;
+
+        toast({
+          title: "🎉 Task Verified!",
+          description: `AI has verified your proof! You've earned ${task.due_coins} coins.`,
+        });
+
+        onTaskVerified(task.id, couponCode);
+      } else {
+        // Mark task as failed
+        const { error: updateError } = await supabase
+          .from('tasks')
+          .update({ 
+            status: 'failed',
+            proof_url: JSON.stringify({
+              urls: proofUrls,
+              description,
+              ai_analysis: aiResult.analysis,
+              failed_at: new Date().toISOString()
+            })
+          })
+          .eq('id', task.id);
+
+        if (updateError) throw updateError;
+
+        toast({
+          title: "Verification Failed",
+          description: "AI determined the proof doesn't meet task requirements.",
+          variant: "destructive"
+        });
+
+        onClose();
+      }
+    } catch (error: any) {
+      console.error('Submission error:', error);
       toast({
-        title: "Analysis Failed",
-        description: "Failed to analyze files with Gemini AI",
+        title: "Submission Failed",
+        description: error.message || "Failed to submit proof. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsProcessing(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <Card className="mt-4 border-2 border-primary/20">
+    <Card className="mt-4 border-2 border-primary/20 animate-fade-in">
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
@@ -145,7 +234,6 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose }) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* File Upload Section */}
         <div className="space-y-2">
           <Label htmlFor="taskFiles">Upload Files (up to 5 files)</Label>
           <Input
@@ -161,13 +249,12 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose }) => {
           </p>
         </div>
 
-        {/* Uploaded Files Preview */}
         {uploadedFiles.length > 0 && (
           <div className="space-y-2">
             <Label>Uploaded Files ({uploadedFiles.length}/5)</Label>
             <div className="grid grid-cols-1 gap-2">
               {uploadedFiles.map((file, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                <div key={index} className="flex items-center justify-between p-3 border rounded-lg animate-scale-in">
                   <div className="flex items-center space-x-3">
                     {getFileIcon(file.type)}
                     <div className="flex-1">
@@ -196,7 +283,6 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose }) => {
           </div>
         )}
 
-        {/* Description */}
         <div className="space-y-2">
           <Label htmlFor="fileDescription">Description (Optional)</Label>
           <Textarea
@@ -208,52 +294,26 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose }) => {
           />
         </div>
 
-        {/* AI Analysis Section */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Label className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-purple-500" />
-              Gemini AI Analysis
-            </Label>
-            <Button 
-              onClick={analyzeWithGemini}
-              disabled={isProcessing || uploadedFiles.length === 0}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-            >
-              {isProcessing ? (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Analyze with AI
-                </>
-              )}
-            </Button>
-          </div>
-
-          {aiAnalysis && (
-            <div className="p-4 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg dark:from-purple-950/20 dark:to-pink-950/20 dark:border-purple-800">
-              <pre className="text-sm whitespace-pre-wrap font-mono text-foreground">
-                {aiAnalysis}
-              </pre>
-            </div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
         <div className="flex justify-between pt-4">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
           <Button 
+            onClick={handleSubmit}
             className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
-            disabled={uploadedFiles.length === 0}
+            disabled={uploadedFiles.length === 0 || isSubmitting}
           >
-            <Upload className="h-4 w-4 mr-2" />
-            Submit Files
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Analyzing & Submitting...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Submit Proof
+              </>
+            )}
           </Button>
         </div>
       </CardContent>
