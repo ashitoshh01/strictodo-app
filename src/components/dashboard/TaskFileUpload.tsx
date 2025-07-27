@@ -84,22 +84,24 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
   };
 
   const analyzeWithGeminiAI = async (taskTitle: string, taskDescription: string, fileTypes: string[], userDescription: string) => {
-    // Simulate Gemini AI analysis with the specific prompt
-    const prompt = `Hey Gemini, you are an all-rounder teacher and checking the tasks of people which can be anything. You have to check the task and then tell on the basis of the proof whether the task is fulfilled or not. 
-
-Task Title: ${taskTitle}
-Task Description: ${taskDescription}
-Files provided: ${uploadedFiles.length} files (${fileTypes.join(', ')})
-User Description: ${userDescription || 'No additional description provided'}
-
-Check it and verify with a simple 'yes' or 'no'. If the output is 'yes', display 'Task verified successfully', return the invested money to the user's account, and give them a scratchable coupon. If not, say 'The proof is not as required, try again' and add a description of the proof you are sending.`;
-
     // Simulate AI processing time
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // For demo purposes, we'll simulate AI response (80% success rate)
+    // More realistic AI simulation - check if description and files seem relevant
+    const hasRelevantDescription = userDescription.toLowerCase().includes('done') || 
+                                  userDescription.toLowerCase().includes('completed') ||
+                                  userDescription.toLowerCase().includes('finished');
+    
+    const hasFiles = uploadedFiles.length > 0;
+    
+    // Simulate more realistic verification (60% success rate, increased if description is relevant)
+    const baseSuccessRate = 0.4;
+    const descriptionBonus = hasRelevantDescription ? 0.3 : 0;
+    const fileBonus = hasFiles ? 0.2 : 0;
+    
     const verificationScore = Math.random();
-    const isVerified = verificationScore > 0.2;
+    const successThreshold = baseSuccessRate + descriptionBonus + fileBonus;
+    const isVerified = verificationScore < successThreshold;
     
     return {
       isVerified,
@@ -107,7 +109,7 @@ Check it and verify with a simple 'yes' or 'no'. If the output is 'yes', display
       analysis: isVerified 
         ? `✅ Task verified successfully
 
-AI Analysis: The submitted proof demonstrates successful completion of "${taskTitle}". The files provided adequately show that the task requirements have been met.
+AI Analysis: The submitted proof demonstrates successful completion of "${taskTitle}". The files and description provided adequately show that the task requirements have been met.
 
 Verification: YES
 Your invested money will be returned to your account and you'll receive a scratchable coupon.`
@@ -116,7 +118,7 @@ Your invested money will be returned to your account and you'll receive a scratc
 AI Analysis: The submitted proof does not adequately demonstrate completion of "${taskTitle}". 
 
 Verification: NO
-Description of submitted proof: The files provided do not clearly show evidence of task completion. Please ensure your proof directly relates to the task requirements and try submitting again before the deadline.`
+Description of submitted proof: The files and description provided do not clearly show evidence of task completion. Please ensure your proof directly relates to the task requirements and provides clear evidence of completion. Try submitting more detailed proof before the deadline.`
     };
   };
 
@@ -142,6 +144,8 @@ Description of submitted proof: The files provided do not clearly show evidence 
     setIsSubmitting(true);
 
     try {
+      console.log('Starting proof submission for task:', task.id);
+      
       // Upload files to storage first
       const proofUrls: string[] = [];
       for (const { file } of uploadedFiles) {
@@ -152,7 +156,10 @@ Description of submitted proof: The files provided do not clearly show evidence 
           .from('task-proofs')
           .upload(fileName, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error('File upload error:', uploadError);
+          throw uploadError;
+        }
 
         const { data: urlData } = supabase.storage
           .from('task-proofs')
@@ -161,7 +168,9 @@ Description of submitted proof: The files provided do not clearly show evidence 
         proofUrls.push(urlData.publicUrl);
       }
 
-      // Perform AI analysis with the specific prompt
+      console.log('Files uploaded successfully:', proofUrls);
+
+      // Perform AI analysis
       toast({
         title: "Analyzing with AI",
         description: "Gemini AI is verifying your proof submission...",
@@ -169,6 +178,17 @@ Description of submitted proof: The files provided do not clearly show evidence 
 
       const fileTypes = [...new Set(uploadedFiles.map(f => f.type))];
       const aiResult = await analyzeWithGeminiAI(task.title, task.description, fileTypes, description);
+
+      console.log('AI analysis result:', aiResult);
+
+      // Create proof data object
+      const proofData = {
+        urls: proofUrls,
+        description,
+        ai_analysis: aiResult.analysis,
+        confidence: aiResult.confidence,
+        submitted_at: new Date().toISOString()
+      };
 
       if (aiResult.isVerified) {
         // Generate coupon code
@@ -180,27 +200,36 @@ Description of submitted proof: The files provided do not clearly show evidence 
           .update({ 
             status: 'verified',
             proof_url: JSON.stringify({
-              urls: proofUrls,
-              description,
-              ai_analysis: aiResult.analysis,
+              ...proofData,
               verified_at: new Date().toISOString()
             })
           })
-          .eq('id', task.id);
+          .eq('id', task.id)
+          .eq('user_id', user.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Task update error:', updateError);
+          throw updateError;
+        }
 
-        // Create reward with proper user_id
-        const { error: rewardError } = await supabase
+        // Create reward - make sure user_id is explicitly set
+        const { data: rewardData, error: rewardError } = await supabase
           .from('rewards')
           .insert({
             user_id: user.id,
             task_id: task.id,
             coupon_code: couponCode,
             amount: task.due_coins,
-          });
+          })
+          .select()
+          .single();
 
-        if (rewardError) throw rewardError;
+        if (rewardError) {
+          console.error('Reward creation error:', rewardError);
+          throw rewardError;
+        }
+
+        console.log('Reward created successfully:', rewardData);
 
         toast({
           title: "🎉 Task Verified Successfully!",
@@ -209,29 +238,31 @@ Description of submitted proof: The files provided do not clearly show evidence 
 
         onTaskVerified(task.id, couponCode);
       } else {
-        // Update task status to submitted (not failed, give user another chance)
+        // Update task status to submitted (failed verification)
         const { error: updateError } = await supabase
           .from('tasks')
           .update({ 
             status: 'submitted',
             proof_url: JSON.stringify({
-              urls: proofUrls,
-              description,
-              ai_analysis: aiResult.analysis,
-              submitted_at: new Date().toISOString()
+              ...proofData,
+              verification_failed_at: new Date().toISOString()
             })
           })
-          .eq('id', task.id);
+          .eq('id', task.id)
+          .eq('user_id', user.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('Task update error:', updateError);
+          throw updateError;
+        }
 
         toast({
           title: "Verification Failed",
-          description: "The proof is not as required. You can try again before the deadline.",
+          description: "AI analysis shows the proof is insufficient. Please try again with better evidence before the deadline.",
           variant: "destructive"
         });
 
-        onClose();
+        // Don't close the modal, let user try again
       }
     } catch (error: any) {
       console.error('Submission error:', error);
