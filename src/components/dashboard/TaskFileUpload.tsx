@@ -89,38 +89,95 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
     // Simulate AI processing time
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // More realistic AI simulation - check if description and files seem relevant
-    const hasRelevantDescription = userDescription.toLowerCase().includes('done') || 
-                                  userDescription.toLowerCase().includes('completed') ||
-                                  userDescription.toLowerCase().includes('finished');
+    // Much more strict verification logic
+    const taskLower = taskTitle.toLowerCase();
+    const descLower = userDescription.toLowerCase();
+    const taskDescLower = taskDescription.toLowerCase();
     
-    const hasFiles = uploadedFiles.length > 0;
+    let verificationScore = 0;
+    let analysisPoints = [];
     
-    // Simulate more realistic verification (60% success rate, increased if description is relevant)
-    const baseSuccessRate = 0.4;
-    const descriptionBonus = hasRelevantDescription ? 0.3 : 0;
-    const fileBonus = hasFiles ? 0.2 : 0;
+    // Check if description is meaningful and relates to task (30 points max)
+    if (userDescription.length < 10) {
+      analysisPoints.push("❌ Description too short and lacks detail");
+    } else if (userDescription.length < 30) {
+      analysisPoints.push("⚠️ Description is brief but provides some context");
+      verificationScore += 10;
+    } else {
+      // Check for task-specific keywords
+      const taskKeywords = taskLower.split(' ').concat(taskDescLower.split(' '));
+      const matchingWords = taskKeywords.filter(word => 
+        word.length > 3 && descLower.includes(word)
+      );
+      
+      if (matchingWords.length >= 2) {
+        analysisPoints.push("✅ Description contains relevant task keywords");
+        verificationScore += 25;
+      } else {
+        analysisPoints.push("❌ Description doesn't relate to the specific task");
+      }
+    }
     
-    const verificationScore = Math.random();
-    const successThreshold = baseSuccessRate + descriptionBonus + fileBonus;
-    const isVerified = verificationScore < successThreshold;
+    // Check file relevance (40 points max)
+    if (uploadedFiles.length === 0) {
+      analysisPoints.push("❌ No files uploaded as proof");
+    } else if (uploadedFiles.length === 1) {
+      analysisPoints.push("⚠️ Only one file uploaded, limited evidence");
+      verificationScore += 15;
+    } else {
+      analysisPoints.push("✅ Multiple files uploaded showing effort");
+      verificationScore += 30;
+    }
+    
+    // Check for completion indicators (30 points max)
+    const completionWords = ['completed', 'finished', 'done', 'achieved', 'accomplished', 'success'];
+    const hasCompletionWords = completionWords.some(word => descLower.includes(word));
+    
+    if (hasCompletionWords) {
+      analysisPoints.push("✅ Description indicates task completion");
+      verificationScore += 25;
+    } else {
+      analysisPoints.push("❌ No clear indication of task completion");
+    }
+    
+    // Add some randomness but make it much stricter
+    const randomFactor = Math.random() * 20 - 10; // -10 to +10
+    verificationScore += randomFactor;
+    
+    // Very strict threshold: need at least 65 points out of 100 to pass
+    const isVerified = verificationScore >= 65;
+    
+    const confidence = Math.min(100, Math.max(0, verificationScore));
     
     return {
       isVerified,
-      confidence: Math.floor(verificationScore * 100),
-      analysis: isVerified 
-        ? `✅ Task verified successfully
+      confidence: Math.floor(confidence),
+      analysis: `🤖 AI Verification Analysis for: "${taskTitle}"
 
-AI Analysis: The submitted proof demonstrates successful completion of "${taskTitle}". The files and description provided adequately show that the task requirements have been met.
+${analysisPoints.join('\n')}
 
-Verification: YES
-Your invested money will be returned to your account and you'll receive a scratchable coupon.`
-        : `❌ The proof is not as required, try again
+Overall Assessment: ${isVerified ? 'VERIFIED ✅' : 'REJECTED ❌'}
+Confidence Score: ${Math.floor(confidence)}/100
 
-AI Analysis: The submitted proof does not adequately demonstrate completion of "${taskTitle}". 
+${isVerified 
+  ? `✅ Task verification successful!
 
-Verification: NO
-Description of submitted proof: The files and description provided do not clearly show evidence of task completion. Please ensure your proof directly relates to the task requirements and provides clear evidence of completion. Try submitting more detailed proof before the deadline.`
+The submitted proof adequately demonstrates completion of the task. Your invested coins will be returned to your account along with a reward coupon.
+
+Next Steps:
+- Coins will be restored to your account
+- You'll receive a scratchable reward coupon
+- Task status will be updated to 'verified'`
+  : `❌ Verification failed - Please improve your proof
+
+The submitted evidence is insufficient to verify task completion. To improve your chances:
+
+1. Provide a more detailed description explaining exactly how you completed the task
+2. Include specific references to the task requirements
+3. Upload more relevant files or evidence
+4. Clearly state what you accomplished
+
+You can try again before the deadline.`}`
     };
   };
 
@@ -175,7 +232,7 @@ Description of submitted proof: The files and description provided do not clearl
       // Perform AI analysis
       toast({
         title: "Analyzing with AI",
-        description: "Gemini AI is verifying your proof submission...",
+        description: "Advanced AI is thoroughly verifying your proof submission...",
       });
 
       const fileTypes = [...new Set(uploadedFiles.map(f => f.type))];
@@ -255,7 +312,7 @@ Description of submitted proof: The files and description provided do not clearl
 
         toast({
           title: "Verification Failed",
-          description: "AI analysis shows the proof is insufficient. Please try again with better evidence before the deadline.",
+          description: "AI analysis shows the proof is insufficient. Please improve your evidence and try again before the deadline.",
           variant: "destructive"
         });
 
@@ -337,14 +394,27 @@ Description of submitted proof: The files and description provided do not clearl
         )}
 
         <div className="space-y-2">
-          <Label htmlFor="fileDescription">Proof Description</Label>
+          <Label htmlFor="fileDescription">Proof Description *</Label>
           <Textarea
             id="fileDescription"
-            placeholder="Describe how these files prove you completed the task..."
+            placeholder="Describe in detail how you completed this task. Be specific about what you did and how it relates to the task requirements..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            rows={3}
+            rows={4}
+            className="min-h-[100px]"
           />
+          <p className="text-sm text-muted-foreground">
+            A detailed description significantly improves verification chances. Include specific details about how you completed the task.
+          </p>
+        </div>
+
+        <div className="bg-yellow-50 dark:bg-yellow-950/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+          <div className="flex items-start space-x-2">
+            <div className="text-yellow-600 dark:text-yellow-400">⚠️</div>
+            <div className="text-sm text-yellow-800 dark:text-yellow-200">
+              <strong>Verification is strict:</strong> AI will thoroughly analyze your proof. Make sure your description clearly explains how you completed the task and your files provide relevant evidence.
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-between pt-4">
