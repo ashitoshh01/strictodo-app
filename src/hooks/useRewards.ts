@@ -38,6 +38,7 @@ export const useRewards = () => {
       console.log('Fetched rewards:', data);
       setRewards(data || []);
     } catch (error: any) {
+      console.error('Error in fetchRewards:', error);
       toast({
         title: "Error fetching rewards",
         description: error.message,
@@ -53,48 +54,72 @@ export const useRewards = () => {
 
     const couponCode = `REWARD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    console.log('Creating reward:', { taskId, amount, couponCode });
+    console.log('Creating reward:', { taskId, amount, couponCode, userId: user.id });
 
-    const { data, error } = await supabase
-      .from('rewards')
-      .insert([{
-        user_id: user.id,
-        task_id: taskId,
-        coupon_code: couponCode,
-        amount,
-      }])
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('rewards')
+        .insert([{
+          user_id: user.id,
+          task_id: taskId,
+          coupon_code: couponCode,
+          amount,
+        }])
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Error creating reward:', error);
+      if (error) {
+        console.error('Error creating reward:', error);
+        
+        // Check if this is an RLS error and provide more specific message
+        if (error.code === '42501' || error.message.includes('row-level security')) {
+          throw new Error('Permission denied: Unable to create reward. Please contact support.');
+        }
+        
+        throw error;
+      }
+      
+      console.log('Created reward:', data);
+      await fetchRewards();
+      return data;
+    } catch (error: any) {
+      console.error('Error in createReward:', error);
       throw error;
     }
-    
-    console.log('Created reward:', data);
-    await fetchRewards();
-    return data;
   };
 
   const scratchReward = async (id: string) => {
+    if (!user) throw new Error('User not authenticated');
+    
     console.log('Scratching reward with ID:', id);
     
-    const { data, error } = await supabase
-      .from('rewards')
-      .update({ is_scratched: true })
-      .eq('id', id)
-      .eq('user_id', user?.id)
-      .select()
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('rewards')
+        .update({ is_scratched: true })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
 
-    if (error) {
-      console.error('Error scratching reward:', error);
+      if (error) {
+        console.error('Error scratching reward:', error);
+        
+        // Check if this is an RLS error
+        if (error.code === '42501' || error.message.includes('row-level security')) {
+          throw new Error('Permission denied: Unable to scratch reward. Please contact support.');
+        }
+        
+        throw error;
+      }
+
+      console.log('Scratched reward successfully:', data);
+      await fetchRewards();
+      return data;
+    } catch (error: any) {
+      console.error('Error in scratchReward:', error);
       throw error;
     }
-
-    console.log('Scratched reward successfully:', data);
-    await fetchRewards();
-    return data;
   };
 
   useEffect(() => {

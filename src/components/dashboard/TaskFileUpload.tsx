@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Task } from '@/hooks/useTasks';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRewards } from '@/hooks/useRewards';
 
 interface UploadedFile {
   file: File;
@@ -27,6 +28,7 @@ interface TaskFileUploadProps {
 const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVerified }) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { createReward } = useRewards();
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -191,9 +193,6 @@ Description of submitted proof: The files and description provided do not clearl
       };
 
       if (aiResult.isVerified) {
-        // Generate coupon code
-        const couponCode = `REWARD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-
         // Update task status to verified
         const { error: updateError } = await supabase
           .from('tasks')
@@ -212,31 +211,29 @@ Description of submitted proof: The files and description provided do not clearl
           throw updateError;
         }
 
-        // Create reward - make sure user_id is explicitly set
-        const { data: rewardData, error: rewardError } = await supabase
-          .from('rewards')
-          .insert({
-            user_id: user.id,
-            task_id: task.id,
-            coupon_code: couponCode,
-            amount: task.due_coins,
-          })
-          .select()
-          .single();
+        // Create reward using the hook which handles RLS properly
+        try {
+          const rewardData = await createReward(task.id, task.due_coins);
+          console.log('Reward created successfully:', rewardData);
 
-        if (rewardError) {
+          toast({
+            title: "🎉 Task Verified Successfully!",
+            description: `AI has verified your proof! Your ${task.due_coins} coins have been returned to your account.`,
+          });
+
+          onTaskVerified(task.id, rewardData.coupon_code);
+        } catch (rewardError) {
           console.error('Reward creation error:', rewardError);
-          throw rewardError;
+          
+          // Show success for task verification but warn about reward issue
+          toast({
+            title: "Task Verified",
+            description: "Task verified successfully, but there was an issue creating the reward. Please contact support.",
+            variant: "destructive"
+          });
+          
+          onTaskVerified(task.id, '');
         }
-
-        console.log('Reward created successfully:', rewardData);
-
-        toast({
-          title: "🎉 Task Verified Successfully!",
-          description: `AI has verified your proof! Your ${task.due_coins} coins have been returned to your account.`,
-        });
-
-        onTaskVerified(task.id, couponCode);
       } else {
         // Update task status to submitted (failed verification)
         const { error: updateError } = await supabase
