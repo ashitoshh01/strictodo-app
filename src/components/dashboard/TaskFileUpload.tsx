@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -89,7 +88,7 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
     // Simulate AI processing time
     await new Promise(resolve => setTimeout(resolve, 3000));
     
-    // Much more strict verification logic
+    // More balanced verification logic
     const taskLower = taskTitle.toLowerCase();
     const descLower = userDescription.toLowerCase();
     const taskDescLower = taskDescription.toLowerCase();
@@ -97,55 +96,56 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
     let verificationScore = 0;
     let analysisPoints = [];
     
-    // Check if description is meaningful and relates to task (30 points max)
+    // Check description length and content (40 points max)
     if (userDescription.length < 10) {
-      analysisPoints.push("❌ Description too short and lacks detail");
-    } else if (userDescription.length < 30) {
-      analysisPoints.push("⚠️ Description is brief but provides some context");
-      verificationScore += 10;
+      analysisPoints.push("❌ Description too short (minimum 10 characters required)");
+    } else if (userDescription.length < 20) {
+      analysisPoints.push("⚠️ Description is brief but acceptable");
+      verificationScore += 25;
     } else {
-      // Check for task-specific keywords
+      analysisPoints.push("✅ Description provides good detail");
+      verificationScore += 35;
+      
+      // Check for task-related keywords (bonus points)
       const taskKeywords = taskLower.split(' ').concat(taskDescLower.split(' '));
-      const matchingWords = taskKeywords.filter(word => 
-        word.length > 3 && descLower.includes(word)
+      const relevantKeywords = taskKeywords.filter(word => 
+        word.length > 2 && descLower.includes(word)
       );
       
-      if (matchingWords.length >= 2) {
-        analysisPoints.push("✅ Description contains relevant task keywords");
-        verificationScore += 25;
-      } else {
-        analysisPoints.push("❌ Description doesn't relate to the specific task");
+      if (relevantKeywords.length >= 1) {
+        analysisPoints.push("✅ Description relates to the task");
+        verificationScore += 5;
       }
     }
     
-    // Check file relevance (40 points max)
+    // Check file upload (30 points max)
     if (uploadedFiles.length === 0) {
       analysisPoints.push("❌ No files uploaded as proof");
     } else if (uploadedFiles.length === 1) {
-      analysisPoints.push("⚠️ Only one file uploaded, limited evidence");
-      verificationScore += 15;
+      analysisPoints.push("✅ File uploaded as evidence");
+      verificationScore += 25;
     } else {
-      analysisPoints.push("✅ Multiple files uploaded showing effort");
+      analysisPoints.push("✅ Multiple files uploaded showing thorough documentation");
       verificationScore += 30;
     }
     
-    // Check for completion indicators (30 points max)
-    const completionWords = ['completed', 'finished', 'done', 'achieved', 'accomplished', 'success'];
-    const hasCompletionWords = completionWords.some(word => descLower.includes(word));
+    // Check for effort indicators (30 points max)
+    const effortWords = ['completed', 'finished', 'done', 'achieved', 'accomplished', 'success', 'task', 'work', 'finished', 'ready'];
+    const hasEffortWords = effortWords.some(word => descLower.includes(word));
     
-    if (hasCompletionWords) {
-      analysisPoints.push("✅ Description indicates task completion");
+    if (hasEffortWords) {
+      analysisPoints.push("✅ Description shows task completion effort");
       verificationScore += 25;
     } else {
-      analysisPoints.push("❌ No clear indication of task completion");
+      analysisPoints.push("⚠️ Description could be more specific about completion");
+      verificationScore += 15; // Still give some points for trying
     }
     
-    // Add some randomness but make it much stricter
-    const randomFactor = Math.random() * 20 - 10; // -10 to +10
-    verificationScore += randomFactor;
+    // Add small positive bias to help genuine attempts
+    verificationScore += 10;
     
-    // Very strict threshold: need at least 65 points out of 100 to pass
-    const isVerified = verificationScore >= 65;
+    // More lenient threshold: need at least 50 points out of 100 to pass
+    const isVerified = verificationScore >= 50;
     
     const confidence = Math.min(100, Math.max(0, verificationScore));
     
@@ -156,26 +156,26 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
 
 ${analysisPoints.join('\n')}
 
-Overall Assessment: ${isVerified ? 'VERIFIED ✅' : 'REJECTED ❌'}
+Overall Assessment: ${isVerified ? 'VERIFIED ✅' : 'NEEDS IMPROVEMENT ❌'}
 Confidence Score: ${Math.floor(confidence)}/100
 
 ${isVerified 
   ? `✅ Task verification successful!
 
-The submitted proof adequately demonstrates completion of the task. Your invested coins will be returned to your account along with a reward coupon.
+The submitted proof demonstrates completion of the task. Your invested coins will be returned to your account along with a reward coupon.
 
 Next Steps:
 - Coins will be restored to your account
 - You'll receive a scratchable reward coupon
 - Task status will be updated to 'verified'`
-  : `❌ Verification failed - Please improve your proof
+  : `❌ Verification needs improvement
 
-The submitted evidence is insufficient to verify task completion. To improve your chances:
+The submitted evidence needs more detail to verify task completion. To improve your chances:
 
-1. Provide a more detailed description explaining exactly how you completed the task
-2. Include specific references to the task requirements
-3. Upload more relevant files or evidence
-4. Clearly state what you accomplished
+1. Provide a more detailed description (minimum 10 characters)
+2. Include what specific actions you took
+3. Upload relevant files showing your work
+4. Mention how you completed the task
 
 You can try again before the deadline.`}`
     };
@@ -232,7 +232,7 @@ You can try again before the deadline.`}`
       // Perform AI analysis
       toast({
         title: "Analyzing with AI",
-        description: "Advanced AI is thoroughly verifying your proof submission...",
+        description: "AI is verifying your proof submission...",
       });
 
       const fileTypes = [...new Set(uploadedFiles.map(f => f.type))];
@@ -311,8 +311,8 @@ You can try again before the deadline.`}`
         }
 
         toast({
-          title: "Verification Failed",
-          description: "AI analysis shows the proof is insufficient. Please improve your evidence and try again before the deadline.",
+          title: "Verification Needs Improvement",
+          description: "Please add more detail to your proof description and try again.",
           variant: "destructive"
         });
 
@@ -397,22 +397,22 @@ You can try again before the deadline.`}`
           <Label htmlFor="fileDescription">Proof Description *</Label>
           <Textarea
             id="fileDescription"
-            placeholder="Describe in detail how you completed this task. Be specific about what you did and how it relates to the task requirements..."
+            placeholder="Describe how you completed this task (minimum 10 characters)..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
             className="min-h-[100px]"
           />
           <p className="text-sm text-muted-foreground">
-            A detailed description significantly improves verification chances. Include specific details about how you completed the task.
+            Minimum 10 characters. Describe what you did to complete the task.
           </p>
         </div>
 
-        <div className="bg-yellow-50 dark:bg-yellow-950/20 p-4 rounded-lg border border-yellow-200 dark:border-yellow-800">
+        <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
           <div className="flex items-start space-x-2">
-            <div className="text-yellow-600 dark:text-yellow-400">⚠️</div>
-            <div className="text-sm text-yellow-800 dark:text-yellow-200">
-              <strong>Verification is strict:</strong> AI will thoroughly analyze your proof. Make sure your description clearly explains how you completed the task and your files provide relevant evidence.
+            <div className="text-blue-600 dark:text-blue-400">ℹ️</div>
+            <div className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Verification Tips:</strong> Provide a clear description of what you did and upload relevant files. The AI will analyze your proof fairly.
             </div>
           </div>
         </div>
