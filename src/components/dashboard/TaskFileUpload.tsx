@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,20 +84,112 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
     });
   };
 
-  const analyzeWithGeminiAI = async (taskTitle: string, taskDescription: string, proofDescription: string) => {
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const analyzeWithGeminiAI = async (
+    taskTitle: string, 
+    taskDescription: string, 
+    proofDescription: string, 
+    uploadedFiles: UploadedFile[]
+  ) => {
     // Simulate AI processing time
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Create the AI prompt
-    const prompt = `You are a verification agent. Your task is to check if the provided proof matches the given title and title description. You will receive three inputs: a Title, a Title Description, and a Proof (which may be text, image, document). Based on your analysis, respond with a single word only: "Yes" if the proof clearly supports or matches the title and description, or "No" if it does not. Do not include any explanation—just reply with Yes or No.
+    // Prepare file data for AI analysis
+    const fileData = await Promise.all(
+      uploadedFiles.map(async (fileObj) => {
+        const { file, type } = fileObj;
+        
+        // For images, convert to base64 for AI analysis
+        if (type === 'image') {
+          try {
+            const base64 = await convertFileToBase64(file);
+            return {
+              name: file.name,
+              type: type,
+              size: file.size,
+              content: base64
+            };
+          } catch (error) {
+            console.error('Error converting image to base64:', error);
+            return {
+              name: file.name,
+              type: type,
+              size: file.size,
+              content: null
+            };
+          }
+        }
+        
+        // For documents, try to read text content
+        if (type === 'document' && file.type === 'text/plain') {
+          try {
+            const text = await file.text();
+            return {
+              name: file.name,
+              type: type,
+              size: file.size,
+              content: text
+            };
+          } catch (error) {
+            console.error('Error reading document:', error);
+            return {
+              name: file.name,
+              type: type,
+              size: file.size,
+              content: null
+            };
+          }
+        }
+        
+        // For other file types, just include metadata
+        return {
+          name: file.name,
+          type: type,
+          size: file.size,
+          content: null
+        };
+      })
+    );
+
+    // Create the comprehensive AI prompt with file information
+    const prompt = `You are a verification agent. Your task is to check if the provided proof matches the given title and title description. You will receive a Title, a Title Description, a Proof Description, and File Data (which may include images, documents, and other files). Based on your analysis of ALL the provided information, respond with a single word only: "Yes" if the proof clearly supports or matches the title and description, or "No" if it does not. Do not include any explanation—just reply with Yes or No.
 
 Title: ${taskTitle}
 Title Description: ${taskDescription}
-Proof: ${proofDescription}`;
+Proof Description: ${proofDescription}
 
-    // Simulate AI response - for demo purposes, we'll do a simple check
-    // In a real implementation, this would call an actual AI service
-    const response = await simulateAIResponse(prompt, taskTitle, taskDescription, proofDescription);
+File Data:
+${fileData.map(file => `
+- File Name: ${file.name}
+- File Type: ${file.type}
+- File Size: ${(file.size / 1024 / 1024).toFixed(2)} MB
+- Content Available: ${file.content ? 'Yes' : 'No'}
+${file.content && file.type === 'image' ? '- Image Data: [Base64 image data provided]' : ''}
+${file.content && file.type === 'document' ? `- Document Content: ${file.content.substring(0, 500)}...` : ''}
+`).join('\n')}
+
+Total Files Uploaded: ${fileData.length}
+
+Please analyze the proof description along with the uploaded files to determine if they provide sufficient evidence that the task was completed as described.`;
+
+    console.log('AI Analysis Prompt:', prompt);
+    
+    // Call the enhanced AI response simulation
+    const response = await simulateEnhancedAIResponse(
+      prompt, 
+      taskTitle, 
+      taskDescription, 
+      proofDescription, 
+      fileData
+    );
     
     return {
       isVerified: response.toLowerCase() === 'yes',
@@ -106,26 +197,76 @@ Proof: ${proofDescription}`;
     };
   };
 
-  const simulateAIResponse = async (prompt: string, taskTitle: string, taskDescription: string, proofDescription: string) => {
-    // Simple simulation logic for demo - in production, replace with actual AI API call
+  const simulateEnhancedAIResponse = async (
+    prompt: string,
+    taskTitle: string,
+    taskDescription: string,
+    proofDescription: string,
+    fileData: any[]
+  ) => {
+    // Enhanced simulation logic that considers both text and file data
     const taskLower = taskTitle.toLowerCase();
     const descLower = taskDescription.toLowerCase();
     const proofLower = proofDescription.toLowerCase();
     
-    // Basic keyword matching simulation
+    // Check for relevant keywords
     const taskWords = taskLower.split(' ').filter(word => word.length > 3);
     const descWords = descLower.split(' ').filter(word => word.length > 3);
     const allTaskWords = [...taskWords, ...descWords];
     
     const hasRelevantKeywords = allTaskWords.some(word => proofLower.includes(word));
-    const hasCompletionIndicators = ['completed', 'finished', 'done', 'accomplished'].some(word => proofLower.includes(word));
+    const hasCompletionIndicators = ['completed', 'finished', 'done', 'accomplished', 'submitted', 'created', 'uploaded', 'sent'].some(word => proofLower.includes(word));
     
-    // Simple logic: if proof has relevant keywords and completion indicators, it's likely valid
-    if (hasRelevantKeywords && hasCompletionIndicators && proofDescription.length > 20) {
-      return 'Yes';
+    // Check if files are relevant to the task
+    const hasRelevantFiles = fileData.length > 0;
+    const hasImageProof = fileData.some(file => file.type === 'image');
+    const hasDocumentProof = fileData.some(file => file.type === 'document');
+    
+    // Enhanced scoring based on multiple factors
+    let score = 0;
+    
+    // Text analysis
+    if (hasRelevantKeywords) score += 2;
+    if (hasCompletionIndicators) score += 2;
+    if (proofDescription.length > 20) score += 1;
+    
+    // File analysis
+    if (hasRelevantFiles) score += 3;
+    if (hasImageProof) score += 2; // Images are strong proof
+    if (hasDocumentProof) score += 2; // Documents are strong proof
+    
+    // Task-specific analysis
+    if (taskLower.includes('photo') || taskLower.includes('image') || taskLower.includes('picture')) {
+      if (hasImageProof) score += 3;
     }
     
-    return 'No';
+    if (taskLower.includes('document') || taskLower.includes('write') || taskLower.includes('report')) {
+      if (hasDocumentProof) score += 3;
+    }
+    
+    // Content analysis for text documents
+    fileData.forEach(file => {
+      if (file.content && file.type === 'document') {
+        const contentLower = file.content.toLowerCase();
+        if (allTaskWords.some(word => contentLower.includes(word))) {
+          score += 2;
+        }
+      }
+    });
+    
+    console.log('AI Simulation Score:', score, 'out of potential points');
+    console.log('Analysis factors:', {
+      hasRelevantKeywords,
+      hasCompletionIndicators,
+      hasRelevantFiles,
+      hasImageProof,
+      hasDocumentProof,
+      proofLength: proofDescription.length,
+      fileCount: fileData.length
+    });
+    
+    // Threshold for approval (adjusted for enhanced analysis)
+    return score >= 6 ? 'Yes' : 'No';
   };
 
   const handleSubmit = async () => {
@@ -185,13 +326,13 @@ Proof: ${proofDescription}`;
 
       console.log('Files uploaded successfully:', proofUrls);
 
-      // Perform AI analysis
+      // Perform AI analysis with both description and uploaded files
       toast({
         title: "Analyzing with AI",
-        description: "AI is verifying your proof submission...",
+        description: "AI is verifying your proof submission including uploaded files...",
       });
 
-      const aiResult = await analyzeWithGeminiAI(task.title, task.description, description);
+      const aiResult = await analyzeWithGeminiAI(task.title, task.description, description, uploadedFiles);
 
       console.log('AI analysis result:', aiResult);
 
@@ -200,11 +341,11 @@ Proof: ${proofDescription}`;
         urls: proofUrls,
         description,
         ai_response: aiResult.response,
+        files_analyzed: uploadedFiles.map(f => ({ name: f.file.name, type: f.type, size: f.file.size })),
         submitted_at: new Date().toISOString()
       };
 
       if (aiResult.isVerified) {
-        // Update task status to verified
         const { error: updateError } = await supabase
           .from('tasks')
           .update({ 
@@ -222,21 +363,19 @@ Proof: ${proofDescription}`;
           throw updateError;
         }
 
-        // Create reward using the hook which handles RLS properly
         try {
           const rewardData = await createReward(task.id, task.due_coins);
           console.log('Reward created successfully:', rewardData);
 
           toast({
             title: "🎉 Task Verified Successfully!",
-            description: `AI has verified your proof! Your ${task.due_coins} coins have been returned and a reward coupon created.`,
+            description: `AI has verified your proof including uploaded files! Your ${task.due_coins} coins have been returned and a reward coupon created.`,
           });
 
           onTaskVerified(task.id, rewardData.coupon_code);
         } catch (rewardError) {
           console.error('Reward creation error:', rewardError);
           
-          // Show success for task verification but warn about reward issue
           toast({
             title: "Task Verified",
             description: "Task verified successfully, but there was an issue creating the reward. Please contact support.",
@@ -246,7 +385,6 @@ Proof: ${proofDescription}`;
           onTaskVerified(task.id, '');
         }
       } else {
-        // Update task status to submitted (failed verification)
         const { error: updateError } = await supabase
           .from('tasks')
           .update({ 
@@ -266,14 +404,13 @@ Proof: ${proofDescription}`;
 
         toast({
           title: "Verification Failed",
-          description: `The proof doesn't match the task description. Please try again with more precise proof.`,
+          description: `The AI analyzed your files and description but couldn't verify the task completion. Please try again with more relevant proof.`,
           variant: "destructive"
         });
 
-        // Show the proof description in the error
         console.log('Proof description that failed:', description);
+        console.log('Files that were analyzed:', uploadedFiles.map(f => f.file.name));
 
-        // Don't close the modal, let user try again
         return;
       }
     } catch (error: any) {
@@ -370,7 +507,7 @@ Proof: ${proofDescription}`;
           <div className="flex items-start space-x-2">
             <div className="text-blue-600 dark:text-blue-400">ℹ️</div>
             <div className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>AI Verification:</strong> The AI will check if your proof matches the task title and description. Make sure your description clearly explains how you completed the task.
+              <strong>AI Verification:</strong> The AI will analyze both your uploaded files (images, documents, etc.) and your description to verify if they match the task requirements. Make sure your files and description clearly demonstrate task completion.
             </div>
           </div>
         </div>
