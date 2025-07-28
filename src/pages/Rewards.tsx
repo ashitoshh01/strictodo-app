@@ -5,7 +5,8 @@ import Navbar from '@/components/layout/Navbar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Gift, IndianRupee, Sparkles, ArrowLeft } from 'lucide-react';
+import { Gift, ArrowLeft, Sparkles } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import { useRewards } from '@/hooks/useRewards';
 import { useToast } from '@/hooks/use-toast';
 import ScratchCard from '@/components/ui/scratch-card';
@@ -38,7 +39,7 @@ const Rewards = () => {
       await scratchReward(rewardId);
       toast({
         title: "Coupon Revealed!",
-        description: "Your coupon code has been revealed and saved!",
+        description: "Your coupon code has been revealed and coins added to your balance!",
       });
     } catch (error: any) {
       console.error('Error scratching reward:', error);
@@ -94,12 +95,15 @@ const Rewards = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <IndianRupee className="h-5 w-5 mr-2" />
+                <CoinIcon className="h-5 w-5 mr-2 text-yellow-500" />
                 Total Earned
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-green-600">₹{totalEarned}</div>
+              <div className="text-3xl font-bold text-yellow-600 flex items-center">
+                <CoinIcon className="h-8 w-8 mr-2 text-yellow-500" />
+                {totalEarned}
+              </div>
               <p className="text-sm text-muted-foreground">
                 From {rewards.length} completed {rewards.length === 1 ? 'task' : 'tasks'}
               </p>
@@ -153,9 +157,9 @@ const Rewards = () => {
                     <CardContent className="space-y-4">
                       {reward.is_scratched ? (
                         <div className="text-center space-y-4">
-                          <div className="text-2xl font-bold text-green-600 flex items-center justify-center">
-                            <IndianRupee className="h-6 w-6 mr-1" />
-                            ₹{reward.amount}
+                          <div className="text-2xl font-bold text-yellow-600 flex items-center justify-center">
+                            <CoinIcon className="h-6 w-6 mr-1 text-yellow-500" />
+                            {reward.amount}
                           </div>
                           <div className="space-y-2">
                             <p className="text-sm text-muted-foreground">Coupon Code:</p>
@@ -163,7 +167,7 @@ const Rewards = () => {
                               {reward.coupon_code}
                             </div>
                             <p className="text-xs text-muted-foreground">
-                              Save this coupon code for future use
+                              Coins have been added to your balance
                             </p>
                           </div>
                         </div>

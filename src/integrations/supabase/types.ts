@@ -92,6 +92,7 @@ export type Database = {
           due_coins: number
           due_date: string
           id: string
+          is_cancelled: boolean | null
           proof_url: string | null
           status: string
           title: string
@@ -104,6 +105,7 @@ export type Database = {
           due_coins: number
           due_date: string
           id?: string
+          is_cancelled?: boolean | null
           proof_url?: string | null
           status?: string
           title: string
@@ -116,6 +118,7 @@ export type Database = {
           due_coins?: number
           due_date?: string
           id?: string
+          is_cancelled?: boolean | null
           proof_url?: string | null
           status?: string
           title?: string

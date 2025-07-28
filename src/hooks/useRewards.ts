@@ -49,12 +49,16 @@ export const useRewards = () => {
     }
   };
 
-  const createReward = async (taskId: string, amount: number) => {
+  const createReward = async (taskId: string) => {
     if (!user) throw new Error('User not authenticated');
 
-    const couponCode = `REWARD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    const couponCode = `COIN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    
+    // Generate reward amount: 1-2 coins normally, 5 coins with 1/50 chance
+    const randomChance = Math.floor(Math.random() * 50) + 1;
+    const rewardAmount = randomChance === 1 ? 5 : Math.floor(Math.random() * 2) + 1;
 
-    console.log('Creating reward:', { taskId, amount, couponCode, userId: user.id });
+    console.log('Creating reward:', { taskId, rewardAmount, couponCode, userId: user.id });
 
     try {
       const { data, error } = await supabase
@@ -63,7 +67,7 @@ export const useRewards = () => {
           user_id: user.id,
           task_id: taskId,
           coupon_code: couponCode,
-          amount,
+          amount: rewardAmount,
         }])
         .select()
         .single();

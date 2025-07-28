@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -364,12 +365,12 @@ Please analyze the proof description along with the uploaded files to determine 
         }
 
         try {
-          const rewardData = await createReward(task.id, task.due_coins);
+          const rewardData = await createReward(task.id);
           console.log('Reward created successfully:', rewardData);
 
           toast({
             title: "🎉 Task Verified Successfully!",
-            description: `AI has verified your proof including uploaded files! Your ${task.due_coins} coins have been returned and a reward coupon created.`,
+            description: `AI has verified your proof! Your ${task.due_coins} coins have been returned and a reward coupon created.`,
           });
 
           onTaskVerified(task.id, rewardData.coupon_code);
@@ -385,10 +386,11 @@ Please analyze the proof description along with the uploaded files to determine 
           onTaskVerified(task.id, '');
         }
       } else {
+        // For failed verification, mark as 'pending' so user can try again
         const { error: updateError } = await supabase
           .from('tasks')
           .update({ 
-            status: 'submitted',
+            status: 'pending',
             proof_url: JSON.stringify({
               ...proofData,
               verification_failed_at: new Date().toISOString()
