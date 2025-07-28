@@ -85,117 +85,47 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
     });
   };
 
-  const analyzeWithGeminiAI = async (taskTitle: string, taskDescription: string, fileTypes: string[], userDescription: string) => {
+  const analyzeWithGeminiAI = async (taskTitle: string, taskDescription: string, proofDescription: string) => {
     // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Comprehensive verification logic
-    const taskLower = taskTitle.toLowerCase();
-    const descLower = userDescription.toLowerCase();
-    const taskDescLower = taskDescription.toLowerCase();
-    
-    let verificationScore = 0;
-    let analysisPoints = [];
-    
-    // Description Quality Assessment (40 points max)
-    if (userDescription.length < 20) {
-      analysisPoints.push("❌ Description too brief - needs more detail about task completion");
-      verificationScore += 5; // Minimal points for trying
-    } else if (userDescription.length < 50) {
-      analysisPoints.push("⚠️ Description is adequate but could be more detailed");
-      verificationScore += 20;
-    } else {
-      analysisPoints.push("✅ Description provides good detail about task completion");
-      verificationScore += 35;
-    }
-    
-    // Task Relevance Check (25 points max)
-    const taskKeywords = taskLower.split(' ').concat(taskDescLower.split(' '));
-    const meaningfulKeywords = taskKeywords.filter(word => word.length > 3);
-    const relevantKeywords = meaningfulKeywords.filter(word => descLower.includes(word));
-    
-    if (relevantKeywords.length === 0) {
-      analysisPoints.push("❌ Description doesn't relate to the task requirements");
-    } else if (relevantKeywords.length >= 2) {
-      analysisPoints.push("✅ Description clearly relates to the task");
-      verificationScore += 25;
-    } else {
-      analysisPoints.push("⚠️ Description somewhat relates to the task");
-      verificationScore += 15;
-    }
-    
-    // File Evidence Assessment (25 points max)
-    if (uploadedFiles.length === 0) {
-      analysisPoints.push("❌ No files uploaded as proof of completion");
-    } else if (uploadedFiles.length === 1) {
-      analysisPoints.push("✅ Evidence file uploaded");
-      verificationScore += 20;
-    } else {
-      analysisPoints.push("✅ Multiple files uploaded showing comprehensive proof");
-      verificationScore += 25;
-    }
-    
-    // Completion Indicators (20 points max)
-    const completionWords = ['completed', 'finished', 'done', 'accomplished', 'achieved', 'success'];
-    const hasCompletionWords = completionWords.some(word => descLower.includes(word));
-    
-    if (hasCompletionWords) {
-      analysisPoints.push("✅ Clear completion indicators found");
-      verificationScore += 20;
-    } else {
-      analysisPoints.push("⚠️ No clear completion indicators");
-      verificationScore += 5;
-    }
-    
-    // Effort Assessment (10 points max)
-    const effortWords = ['worked', 'spent', 'time', 'effort', 'tried', 'attempted'];
-    const hasEffortWords = effortWords.some(word => descLower.includes(word));
-    
-    if (hasEffortWords) {
-      analysisPoints.push("✅ Shows effort and engagement");
-      verificationScore += 10;
-    } else {
-      analysisPoints.push("⚠️ Could show more effort detail");
-      verificationScore += 3;
-    }
-    
-    // Quality threshold: need at least 70 points out of 120 to pass
-    const isVerified = verificationScore >= 70;
-    
-    const confidence = Math.min(100, Math.max(0, Math.round((verificationScore / 120) * 100)));
+    // Create the AI prompt
+    const prompt = `You are a verification agent. Your task is to check if the provided proof matches the given title and title description. You will receive three inputs: a Title, a Title Description, and a Proof (which may be text, image, document). Based on your analysis, respond with a single word only: "Yes" if the proof clearly supports or matches the title and description, or "No" if it does not. Do not include any explanation—just reply with Yes or No.
+
+Title: ${taskTitle}
+Title Description: ${taskDescription}
+Proof: ${proofDescription}`;
+
+    // Simulate AI response - for demo purposes, we'll do a simple check
+    // In a real implementation, this would call an actual AI service
+    const response = await simulateAIResponse(prompt, taskTitle, taskDescription, proofDescription);
     
     return {
-      isVerified,
-      confidence,
-      analysis: `🤖 AI Verification Analysis for: "${taskTitle}"
-
-${analysisPoints.join('\n')}
-
-Overall Assessment: ${isVerified ? 'VERIFIED ✅' : 'REQUIRES IMPROVEMENT ❌'}
-Confidence Score: ${confidence}/100
-
-${isVerified 
-  ? `✅ Task verification successful!
-
-The submitted proof demonstrates adequate completion of the task. Your invested coins will be returned to your account along with a reward coupon.
-
-Actions taken:
-- Coins restored to your account
-- Reward coupon generated
-- Task status updated to 'verified'`
-  : `❌ Verification requires improvement
-
-The submitted evidence needs enhancement to verify task completion. To improve your verification score:
-
-1. Provide a more detailed description (aim for 50+ characters)
-2. Include specific actions you took to complete the task
-3. Upload relevant files showing your work
-4. Use completion words like 'completed', 'finished', 'accomplished'
-5. Show effort and engagement in your description
-
-Current score: ${verificationScore}/120 (need 70+ to pass)
-You can resubmit before the deadline with improved proof.`}`
+      isVerified: response.toLowerCase() === 'yes',
+      response: response.toLowerCase()
     };
+  };
+
+  const simulateAIResponse = async (prompt: string, taskTitle: string, taskDescription: string, proofDescription: string) => {
+    // Simple simulation logic for demo - in production, replace with actual AI API call
+    const taskLower = taskTitle.toLowerCase();
+    const descLower = taskDescription.toLowerCase();
+    const proofLower = proofDescription.toLowerCase();
+    
+    // Basic keyword matching simulation
+    const taskWords = taskLower.split(' ').filter(word => word.length > 3);
+    const descWords = descLower.split(' ').filter(word => word.length > 3);
+    const allTaskWords = [...taskWords, ...descWords];
+    
+    const hasRelevantKeywords = allTaskWords.some(word => proofLower.includes(word));
+    const hasCompletionIndicators = ['completed', 'finished', 'done', 'accomplished'].some(word => proofLower.includes(word));
+    
+    // Simple logic: if proof has relevant keywords and completion indicators, it's likely valid
+    if (hasRelevantKeywords && hasCompletionIndicators && proofDescription.length > 20) {
+      return 'Yes';
+    }
+    
+    return 'No';
   };
 
   const handleSubmit = async () => {
@@ -261,8 +191,7 @@ You can resubmit before the deadline with improved proof.`}`
         description: "AI is verifying your proof submission...",
       });
 
-      const fileTypes = [...new Set(uploadedFiles.map(f => f.type))];
-      const aiResult = await analyzeWithGeminiAI(task.title, task.description, fileTypes, description);
+      const aiResult = await analyzeWithGeminiAI(task.title, task.description, description);
 
       console.log('AI analysis result:', aiResult);
 
@@ -270,8 +199,7 @@ You can resubmit before the deadline with improved proof.`}`
       const proofData = {
         urls: proofUrls,
         description,
-        ai_analysis: aiResult.analysis,
-        confidence: aiResult.confidence,
+        ai_response: aiResult.response,
         submitted_at: new Date().toISOString()
       };
 
@@ -337,10 +265,13 @@ You can resubmit before the deadline with improved proof.`}`
         }
 
         toast({
-          title: "Verification Needs Improvement",
-          description: `Score: ${aiResult.confidence}/100. Please add more detail and try again.`,
+          title: "Verification Failed",
+          description: `The proof doesn't match the task description. Please try again with more precise proof.`,
           variant: "destructive"
         });
+
+        // Show the proof description in the error
+        console.log('Proof description that failed:', description);
 
         // Don't close the modal, let user try again
         return;
@@ -424,7 +355,7 @@ You can resubmit before the deadline with improved proof.`}`
           <Label htmlFor="fileDescription">Proof Description *</Label>
           <Textarea
             id="fileDescription"
-            placeholder="Describe in detail how you completed this task (minimum 10 characters)..."
+            placeholder="Describe how you completed this task..."
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={4}
@@ -435,11 +366,11 @@ You can resubmit before the deadline with improved proof.`}`
           </p>
         </div>
 
-        <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-lg border border-amber-200 dark:border-amber-800">
+        <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
           <div className="flex items-start space-x-2">
-            <div className="text-amber-600 dark:text-amber-400">⚠️</div>
-            <div className="text-sm text-amber-800 dark:text-amber-200">
-              <strong>Verification Requirements:</strong> The AI needs a detailed description (aim for 50+ characters) and relevant files. Use completion words like "completed", "finished", "accomplished" to improve your verification score.
+            <div className="text-blue-600 dark:text-blue-400">ℹ️</div>
+            <div className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>AI Verification:</strong> The AI will check if your proof matches the task title and description. Make sure your description clearly explains how you completed the task.
             </div>
           </div>
         </div>
