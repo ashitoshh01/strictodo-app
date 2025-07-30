@@ -131,11 +131,25 @@ export const useRewards = () => {
         throw error;
       }
 
+      // Get current user profile to calculate new coin balance
+      const { data: currentProfile, error: profileFetchError } = await supabase
+        .from('profiles')
+        .select('due_coins')
+        .eq('id', user.id)
+        .single();
+
+      if (profileFetchError) {
+        console.error('Error fetching current profile:', profileFetchError);
+        throw profileFetchError;
+      }
+
       // Add the reward coins to the user's balance
+      const newCoinBalance = currentProfile.due_coins + rewardData.amount;
+      
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
-          due_coins: supabase.sql`due_coins + ${rewardData.amount}`,
+          due_coins: newCoinBalance,
           updated_at: new Date().toISOString()
         })
         .eq('id', user.id);
