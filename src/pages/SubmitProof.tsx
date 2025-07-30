@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -32,6 +33,7 @@ const SubmitProof = () => {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [proofDescription, setProofDescription] = useState('');
   const [rewardCoupon, setRewardCoupon] = useState<string>('');
+  const [rewardAmount, setRewardAmount] = useState<number>(0);
   const [showReward, setShowReward] = useState(false);
 
   const task = tasks.find(t => t.id === taskId);
@@ -55,7 +57,6 @@ const SubmitProof = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500';
-      case 'submitted': return 'bg-blue-500';
       case 'verified': return 'bg-green-500';
       case 'failed': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -65,7 +66,6 @@ const SubmitProof = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
-      case 'submitted': return <Upload className="h-4 w-4" />;
       case 'verified': return <CheckCircle className="h-4 w-4" />;
       case 'failed': return <X className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
@@ -159,7 +159,7 @@ const SubmitProof = () => {
         proofUrls.push(urlData.publicUrl);
       }
 
-      // Update task with proof URLs and description
+      // Update task with proof URLs and description, and mark as verified
       const proofData = {
         urls: proofUrls,
         description: proofDescription,
@@ -167,45 +167,34 @@ const SubmitProof = () => {
       };
 
       await updateTask(taskId!, { 
-        status: 'submitted' as const,
+        status: 'verified' as const,
         proof_url: JSON.stringify(proofData)
       });
 
       toast({
-        title: "Success!",
-        description: "Your proof has been submitted successfully",
+        title: "Task Verified!",
+        description: "Your proof has been verified. You've earned your reward!",
       });
 
-      // Simulate verification process (in real app, this would be manual or AI-powered)
-      setTimeout(async () => {
-        try {
-          await updateTask(taskId!, { status: 'verified' as const });
-          
-          toast({
-            title: "Task Verified!",
-            description: "Your proof has been verified. You've earned your reward!",
-          });
-
-          // Create reward in database - now only passing taskId
-          try {
-            const reward = await createReward(task!.id);
-            console.log('Reward created successfully:', reward);
-          } catch (rewardError) {
-            console.error('Failed to create reward:', rewardError);
-          }
-
-          setRewardCoupon(`REWARD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`);
-          setShowReward(true);
-          
-        } catch (error) {
-          console.error('Error during verification:', error);
-          toast({
-            title: "Verification Error",
-            description: "There was an error verifying your task. Please try again.",
-            variant: "destructive"
-          });
-        }
-      }, 2000);
+      // Create reward in database
+      try {
+        const reward = await createReward(task!.id);
+        console.log('Reward created successfully:', reward);
+        setRewardCoupon(reward.coupon_code);
+        setRewardAmount(reward.amount);
+        setShowReward(true);
+      } catch (rewardError) {
+        console.error('Failed to create reward:', rewardError);
+        toast({
+          title: "Warning",
+          description: "Task verified but there was an issue creating your reward. Please check your rewards page.",
+          variant: "destructive"
+        });
+        // Still navigate back even if reward creation fails
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 3000);
+      }
 
     } catch (error: any) {
       toast({
@@ -237,7 +226,7 @@ const SubmitProof = () => {
         <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
-            <div className="text-center">Submitting proof...</div>
+            <div className="text-center">Processing your submission...</div>
           </div>
         </main>
       </div>
@@ -274,9 +263,9 @@ const SubmitProof = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>{task?.title}</span>
-                <Badge variant="secondary">
-                  <Clock className="h-4 w-4 mr-1" />
-                  {task?.status}
+                <Badge className={`${getStatusColor(task?.status || 'pending')} text-white`}>
+                  {getStatusIcon(task?.status || 'pending')}
+                  <span className="ml-1 capitalize">{task?.status}</span>
                 </Badge>
               </CardTitle>
               <CardDescription>{task?.description}</CardDescription>
@@ -301,7 +290,7 @@ const SubmitProof = () => {
             <div className="text-center space-y-4">
               <ScratchCard 
                 couponCode={rewardCoupon}
-                amount={task!.due_coins}
+                amount={rewardAmount}
                 onReveal={() => {
                   setTimeout(() => {
                     navigate('/dashboard');
@@ -386,12 +375,12 @@ const SubmitProof = () => {
                     {isSubmitting ? (
                       <>
                         <Upload className="h-4 w-4 mr-2 animate-spin" />
-                        Submitting Proof...
+                        Processing Submission...
                       </>
                     ) : (
                       <>
                         <Upload className="h-4 w-4 mr-2" />
-                        Submit Proof
+                        Submit Proof & Get Verified
                       </>
                     )}
                   </Button>

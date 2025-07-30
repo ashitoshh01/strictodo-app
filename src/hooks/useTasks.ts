@@ -10,7 +10,7 @@ export interface Task {
   description: string;
   due_date: string;
   due_coins: number;
-  status: 'pending' | 'submitted' | 'verified' | 'failed';
+  status: 'pending' | 'verified' | 'failed';
   proof_url?: string;
   created_at: string;
   updated_at: string;

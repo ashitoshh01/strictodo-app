@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, Clock, CheckCircle, XCircle, Upload, Save } from 'lucide-react';
+import { Trash2, Clock, CheckCircle, XCircle, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Task } from '@/hooks/useTasks';
@@ -21,7 +21,6 @@ const TaskManager = ({ tasks, onTasksUpdate }: TaskManagerProps) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500';
-      case 'submitted': return 'bg-blue-500';
       case 'verified': return 'bg-green-500';
       case 'failed': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -31,7 +30,6 @@ const TaskManager = ({ tasks, onTasksUpdate }: TaskManagerProps) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
-      case 'submitted': return <Upload className="h-4 w-4" />;
       case 'verified': return <CheckCircle className="h-4 w-4" />;
       case 'failed': return <XCircle className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;

@@ -98,6 +98,20 @@ export const useRewards = () => {
     console.log('Scratching reward with ID:', id);
     
     try {
+      // First, get the reward to know the amount
+      const { data: rewardData, error: fetchError } = await supabase
+        .from('rewards')
+        .select('amount')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching reward data:', fetchError);
+        throw fetchError;
+      }
+
+      // Mark the reward as scratched
       const { data, error } = await supabase
         .from('rewards')
         .update({ is_scratched: true })
@@ -115,6 +129,25 @@ export const useRewards = () => {
         }
         
         throw error;
+      }
+
+      // Add the reward coins to the user's balance
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          due_coins: supabase.sql`due_coins + ${rewardData.amount}`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (profileError) {
+        console.error('Error updating user coins:', profileError);
+        // We still mark the reward as scratched but notify about the coin update issue
+        toast({
+          title: "Warning",
+          description: "Reward revealed but there was an issue updating your coin balance. Please refresh the page.",
+          variant: "destructive"
+        });
       }
 
       console.log('Scratched reward successfully:', data);
