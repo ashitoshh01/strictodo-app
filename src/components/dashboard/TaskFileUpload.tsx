@@ -160,30 +160,54 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
       })
     );
 
-    // Create the comprehensive AI prompt with file information
-    const prompt = `You are a verification agent. Your task is to check if the provided proof matches the given title and title description. You will receive a Title, a Title Description, a Proof Description, and File Data (which may include images, documents, and other files). Based on your analysis of ALL the provided information, respond with a single word only: "Yes" if the proof clearly supports or matches the title and description, or "No" if it does not. Do not include any explanation—just reply with Yes or No.
+    // Create the comprehensive AI prompt with the new DorOrDue format
+    const prompt = `[DorOrDue AI — Deterministic JSON Agent (No Loops)]
 
-Title: ${taskTitle}
-Title Description: ${taskDescription}
-Proof Description: ${proofDescription}
+ROLE & SCOPE
+You are the backend decision engine for DorOrDue, a strict to‑do app that uses monetary commitment, AI proof verification, and reward coupons to enforce task completion. You must be precise, conservative, and deterministic.
 
-File Data:
+OUTPUT FORMAT (MANDATORY)
+Always answer with ONLY a single JSON object. No extra text, no markdown.
+Schema:
+{
+  "action": "create_task" | "accept_proof" | "reject_proof" | "verify_proof" | "ask_clarifying_question" | "edit_task" | "escalate" | "stuck",
+  "reason": "short plain sentence explaining why",
+  "data": {}  // object with fields required by the chosen action
+}
+
+ACTIONS & REQUIRED data FIELDS
+- accept_proof:
+  data = { "task_id": string }
+- reject_proof:
+  data = { "task_id": string, "violations": [ "missing_proof" | "wrong_task" | "insufficient_duration" | "unclear_image" | "not_measurable" | "late_submission" | "forbidden_editing" | "other" ], "advice": string }
+
+DECISION RULES (ACCURACY FIRST)
+1) Only accept proofs that directly and clearly match the task requirements. If not, use reject_proof with specific violations and a one‑line advice for how to fix.
+2) A valid proof must be: (a) relevant to the exact task, (b) clear to read/see, (c) time‑appropriate (not obviously old), (d) sufficient to show completion.
+3) Reject typical weak proofs: generic screenshots, cropped images hiding key info, unrelated links, or unverifiable claims.
+
+TASK DETAILS:
+Task Title: ${taskTitle}
+Task Description: ${taskDescription}
+User's Proof Description: ${proofDescription}
+
+FILE DATA PROVIDED:
 ${fileData.map(file => `
 - File Name: ${file.name}
 - File Type: ${file.type}
 - File Size: ${(file.size / 1024 / 1024).toFixed(2)} MB
 - Content Available: ${file.content ? 'Yes' : 'No'}
-${file.content && file.type === 'image' ? '- Image Data: [Base64 image data provided]' : ''}
+${file.content && file.type === 'image' ? '- Image Data: [Base64 image data provided for analysis]' : ''}
 ${file.content && file.type === 'document' ? `- Document Content: ${file.content.substring(0, 500)}...` : ''}
 `).join('\n')}
 
 Total Files Uploaded: ${fileData.length}
 
-Please analyze the proof description along with the uploaded files to determine if they provide sufficient evidence that the task was completed as described.`;
+Based on the task requirements and the provided proof (description + files), determine if this proof should be accepted or rejected. Use either "accept_proof" or "reject_proof" action with the task_id "${task.id}".`;
 
     console.log('AI Analysis Prompt:', prompt);
     
-    // Call the enhanced AI response simulation
+    // Call the enhanced AI response simulation with JSON parsing
     const response = await simulateEnhancedAIResponse(
       prompt, 
       taskTitle, 
@@ -192,10 +216,7 @@ Please analyze the proof description along with the uploaded files to determine 
       fileData
     );
     
-    return {
-      isVerified: response.toLowerCase() === 'yes',
-      response: response.toLowerCase()
-    };
+    return response;
   };
 
   const simulateEnhancedAIResponse = async (
@@ -266,8 +287,46 @@ Please analyze the proof description along with the uploaded files to determine 
       fileCount: fileData.length
     });
     
-    // Threshold for approval (adjusted for enhanced analysis)
-    return score >= 6 ? 'Yes' : 'No';
+    // Generate JSON response based on score
+    if (score >= 6) {
+      return {
+        action: "accept_proof",
+        reason: "Proof clearly demonstrates task completion with relevant files and description.",
+        data: {
+          task_id: task.id
+        },
+        isVerified: true
+      };
+    } else {
+      // Determine violations based on what's missing
+      const violations = [];
+      let advice = "Please provide clearer proof of task completion.";
+      
+      if (!hasRelevantFiles) {
+        violations.push("missing_proof");
+        advice = "Upload relevant files that demonstrate task completion.";
+      } else if (!hasRelevantKeywords) {
+        violations.push("wrong_task");
+        advice = "Ensure your proof clearly relates to the specific task requirements.";
+      } else if (proofDescription.length < 20) {
+        violations.push("not_measurable");
+        advice = "Provide a more detailed description of how you completed the task.";
+      } else {
+        violations.push("other");
+        advice = "The proof does not sufficiently demonstrate task completion.";
+      }
+      
+      return {
+        action: "reject_proof",
+        reason: "Proof does not meet verification requirements.",
+        data: {
+          task_id: task.id,
+          violations: violations,
+          advice: advice
+        },
+        isVerified: false
+      };
+    }
   };
 
   const handleSubmit = async () => {
@@ -341,7 +400,9 @@ Please analyze the proof description along with the uploaded files to determine 
       const proofData = {
         urls: proofUrls,
         description,
-        ai_response: aiResult.response,
+        ai_response: aiResult.action,
+        ai_reason: aiResult.reason,
+        ai_data: aiResult.data,
         files_analyzed: uploadedFiles.map(f => ({ name: f.file.name, type: f.type, size: f.file.size })),
         submitted_at: new Date().toISOString()
       };
@@ -404,14 +465,24 @@ Please analyze the proof description along with the uploaded files to determine 
           throw updateError;
         }
 
+        // Show more specific feedback based on AI response
+        const aiData = aiResult.data as any;
+        const advice = aiData?.advice || "Please try again with more relevant proof.";
+        const violations = aiData?.violations || [];
+
         toast({
           title: "Verification Failed",
-          description: `The AI analyzed your files and description but couldn't verify the task completion. Please try again with more relevant proof.`,
+          description: `${aiResult.reason} ${advice}`,
           variant: "destructive"
         });
 
-        console.log('Proof description that failed:', description);
-        console.log('Files that were analyzed:', uploadedFiles.map(f => f.file.name));
+        console.log('Proof verification failed:', {
+          reason: aiResult.reason,
+          violations: violations,
+          advice: advice,
+          description: description,
+          files: uploadedFiles.map(f => f.file.name)
+        });
 
         return;
       }
