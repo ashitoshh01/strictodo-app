@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Navbar from '@/components/layout/Navbar';
@@ -187,9 +186,9 @@ const SubmitProof = () => {
             description: "Your proof has been verified. You've earned your reward!",
           });
 
-          // Create reward in database
+          // Create reward in database - now only passing taskId
           try {
-            const reward = await createReward(task!.id, task!.due_coins);
+            const reward = await createReward(task!.id);
             console.log('Reward created successfully:', reward);
           } catch (rewardError) {
             console.error('Failed to create reward:', rewardError);
