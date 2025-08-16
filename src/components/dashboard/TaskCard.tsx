@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, Upload, X, ChevronDown, ChevronUp, Calendar, Target } from 'lucide-react';
+import { Clock, CheckCircle, Upload, X, ChevronDown, ChevronUp, Calendar, Target, Search } from 'lucide-react';
 import { CoinIcon } from '@/components/ui/coin-icon';
 import { Task } from '@/hooks/useTasks';
 import TaskFileUpload from './TaskFileUpload';
@@ -24,6 +24,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500';
       case 'submitted': return 'bg-blue-500';
+      case 'pending-verification': return 'bg-blue-500';
       case 'verified': return 'bg-green-500';
       case 'failed': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -34,6 +35,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     switch (status) {
       case 'pending': return 'border-yellow-200 hover:border-yellow-300';
       case 'submitted': return 'border-blue-200 hover:border-blue-300';
+      case 'pending-verification': return 'border-blue-200 hover:border-blue-300';
       case 'verified': return 'border-green-200 hover:border-green-300 bg-green-50/30';
       case 'failed': return 'border-red-200 hover:border-red-300 bg-red-50/30';
       default: return 'border-gray-200 hover:border-gray-300';
@@ -44,6 +46,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
       case 'submitted': return <Upload className="h-4 w-4" />;
+      case 'pending-verification': return <Search className="h-4 w-4" />;
       case 'verified': return <CheckCircle className="h-4 w-4" />;
       case 'failed': return <X className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
@@ -162,6 +165,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 <div className="text-center py-4 text-green-600 bg-green-50 rounded-lg">
                   <p className="font-semibold">✅ Task Verified Successfully!</p>
                   <p className="text-sm">Your coins have been returned to your account.</p>
+                </div>
+              )}
+
+              {task.status === 'pending-verification' && (
+                <div className="text-center py-4 text-blue-600 bg-blue-50 rounded-lg">
+                  <p className="font-semibold">🔍 Proof Submitted</p>
+                  <p className="text-sm">Your proof is currently being verified by AI.</p>
                 </div>
               )}
 

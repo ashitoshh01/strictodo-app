@@ -167,34 +167,19 @@ const SubmitProof = () => {
       };
 
       await updateTask(taskId!, { 
-        status: 'verified' as const,
+        status: 'pending-verification' as const,
         proof_url: JSON.stringify(proofData)
       });
 
       toast({
-        title: "Task Verified!",
-        description: "Your proof has been verified. You've earned your reward!",
+        title: "Proof Submitted!",
+        description: "Your proof has been submitted and is pending verification.",
       });
 
-      // Create reward in database
-      try {
-        const reward = await createReward(task!.id);
-        console.log('Reward created successfully:', reward);
-        setRewardCoupon(reward.coupon_code);
-        setRewardAmount(reward.amount);
-        setShowReward(true);
-      } catch (rewardError) {
-        console.error('Failed to create reward:', rewardError);
-        toast({
-          title: "Warning",
-          description: "Task verified but there was an issue creating your reward. Please check your rewards page.",
-          variant: "destructive"
-        });
-        // Still navigate back even if reward creation fails
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 3000);
-      }
+      // Navigate back to dashboard
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 3000);
 
     } catch (error: any) {
       toast({
