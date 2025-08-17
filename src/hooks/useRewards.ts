@@ -173,6 +173,31 @@ export const useRewards = () => {
     }
   };
 
+  const getRewardByTask = async (taskId: string) => {
+    if (!user) return null;
+
+    try {
+      const { data, error } = await supabase
+        .from('rewards')
+        .select('*')
+        .eq('task_id', taskId)
+        .eq('user_id', user.id)
+        .single();
+
+      if (error) {
+        // It's okay if no reward is found, so we don't throw an error here.
+        // We only log it for debugging.
+        console.log('No reward found for task:', taskId);
+        return null;
+      }
+
+      return data;
+    } catch (error: any) {
+      console.error('Error fetching reward by task:', error);
+      return null;
+    }
+  };
+
   useEffect(() => {
     fetchRewards();
   }, [user]);
@@ -182,6 +207,7 @@ export const useRewards = () => {
     loading,
     createReward,
     scratchReward,
+    getRewardByTask,
     refetch: fetchRewards
   };
 };

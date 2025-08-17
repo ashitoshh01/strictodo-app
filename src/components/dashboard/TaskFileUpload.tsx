@@ -94,241 +94,6 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
     });
   };
 
-  const analyzeWithGeminiAI = async (
-    taskTitle: string, 
-    taskDescription: string, 
-    proofDescription: string, 
-    uploadedFiles: UploadedFile[]
-  ) => {
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Prepare file data for AI analysis
-    const fileData = await Promise.all(
-      uploadedFiles.map(async (fileObj) => {
-        const { file, type } = fileObj;
-        
-        // For images, convert to base64 for AI analysis
-        if (type === 'image') {
-          try {
-            const base64 = await convertFileToBase64(file);
-            return {
-              name: file.name,
-              type: type,
-              size: file.size,
-              content: base64
-            };
-          } catch (error) {
-            console.error('Error converting image to base64:', error);
-            return {
-              name: file.name,
-              type: type,
-              size: file.size,
-              content: null
-            };
-          }
-        }
-        
-        // For documents, try to read text content
-        if (type === 'document' && file.type === 'text/plain') {
-          try {
-            const text = await file.text();
-            return {
-              name: file.name,
-              type: type,
-              size: file.size,
-              content: text
-            };
-          } catch (error) {
-            console.error('Error reading document:', error);
-            return {
-              name: file.name,
-              type: type,
-              size: file.size,
-              content: null
-            };
-          }
-        }
-        
-        // For other file types, just include metadata
-        return {
-          name: file.name,
-          type: type,
-          size: file.size,
-          content: null
-        };
-      })
-    );
-
-    // Create the comprehensive AI prompt with the new DorOrDue format
-    const prompt = `[DorOrDue AI — Deterministic JSON Agent (No Loops)]
-
-ROLE & SCOPE
-You are the backend decision engine for DorOrDue, a strict to‑do app that uses monetary commitment, AI proof verification, and reward coupons to enforce task completion. You must be precise, conservative, and deterministic.
-
-OUTPUT FORMAT (MANDATORY)
-Always answer with ONLY a single JSON object. No extra text, no markdown.
-Schema:
-{
-  "action": "create_task" | "accept_proof" | "reject_proof" | "verify_proof" | "ask_clarifying_question" | "edit_task" | "escalate" | "stuck",
-  "reason": "short plain sentence explaining why",
-  "data": {}  // object with fields required by the chosen action
-}
-
-ACTIONS & REQUIRED data FIELDS
-- accept_proof:
-  data = { "task_id": string }
-- reject_proof:
-  data = { "task_id": string, "violations": [ "missing_proof" | "wrong_task" | "insufficient_duration" | "unclear_image" | "not_measurable" | "late_submission" | "forbidden_editing" | "other" ], "advice": string }
-
-DECISION RULES (ACCURACY FIRST)
-1) Only accept proofs that directly and clearly match the task requirements. If not, use reject_proof with specific violations and a one‑line advice for how to fix.
-2) A valid proof must be: (a) relevant to the exact task, (b) clear to read/see, (c) time‑appropriate (not obviously old), (d) sufficient to show completion.
-3) Reject typical weak proofs: generic screenshots, cropped images hiding key info, unrelated links, or unverifiable claims.
-
-TASK DETAILS:
-Task Title: ${taskTitle}
-Task Description: ${taskDescription}
-User's Proof Description: ${proofDescription}
-
-FILE DATA PROVIDED:
-${fileData.map(file => `
-- File Name: ${file.name}
-- File Type: ${file.type}
-- File Size: ${(file.size / 1024 / 1024).toFixed(2)} MB
-- Content Available: ${file.content ? 'Yes' : 'No'}
-${file.content && file.type === 'image' ? '- Image Data: [Base64 image data provided for analysis]' : ''}
-${file.content && file.type === 'document' ? `- Document Content: ${file.content.substring(0, 500)}...` : ''}
-`).join('\n')}
-
-Total Files Uploaded: ${fileData.length}
-
-Based on the task requirements and the provided proof (description + files), determine if this proof should be accepted or rejected. Use either "accept_proof" or "reject_proof" action with the task_id "${task.id}".`;
-
-    console.log('AI Analysis Prompt:', prompt);
-    
-    // Call the enhanced AI response simulation with JSON parsing
-    const response = await simulateEnhancedAIResponse(
-      prompt, 
-      taskTitle, 
-      taskDescription, 
-      proofDescription, 
-      fileData
-    );
-    
-    return response;
-  };
-
-  const simulateEnhancedAIResponse = async (
-    prompt: string,
-    taskTitle: string,
-    taskDescription: string,
-    proofDescription: string,
-    fileData: any[]
-  ) => {
-    // Enhanced simulation logic that considers both text and file data
-    const taskLower = taskTitle.toLowerCase();
-    const descLower = taskDescription.toLowerCase();
-    const proofLower = proofDescription.toLowerCase();
-    
-    // Check for relevant keywords
-    const taskWords = taskLower.split(' ').filter(word => word.length > 3);
-    const descWords = descLower.split(' ').filter(word => word.length > 3);
-    const allTaskWords = [...taskWords, ...descWords];
-    
-    const hasRelevantKeywords = allTaskWords.some(word => proofLower.includes(word));
-    const hasCompletionIndicators = ['completed', 'finished', 'done', 'accomplished', 'submitted', 'created', 'uploaded', 'sent'].some(word => proofLower.includes(word));
-    
-    // Check if files are relevant to the task
-    const hasRelevantFiles = fileData.length > 0;
-    const hasImageProof = fileData.some(file => file.type === 'image');
-    const hasDocumentProof = fileData.some(file => file.type === 'document');
-    
-    // Enhanced scoring based on multiple factors
-    let score = 0;
-    
-    // Text analysis
-    if (hasRelevantKeywords) score += 2;
-    if (hasCompletionIndicators) score += 2;
-    if (proofDescription.length > 20) score += 1;
-    
-    // File analysis
-    if (hasRelevantFiles) score += 3;
-    if (hasImageProof) score += 2; // Images are strong proof
-    if (hasDocumentProof) score += 2; // Documents are strong proof
-    
-    // Task-specific analysis
-    if (taskLower.includes('photo') || taskLower.includes('image') || taskLower.includes('picture')) {
-      if (hasImageProof) score += 3;
-    }
-    
-    if (taskLower.includes('document') || taskLower.includes('write') || taskLower.includes('report')) {
-      if (hasDocumentProof) score += 3;
-    }
-    
-    // Content analysis for text documents
-    fileData.forEach(file => {
-      if (file.content && file.type === 'document') {
-        const contentLower = file.content.toLowerCase();
-        if (allTaskWords.some(word => contentLower.includes(word))) {
-          score += 2;
-        }
-      }
-    });
-    
-    console.log('AI Simulation Score:', score, 'out of potential points');
-    console.log('Analysis factors:', {
-      hasRelevantKeywords,
-      hasCompletionIndicators,
-      hasRelevantFiles,
-      hasImageProof,
-      hasDocumentProof,
-      proofLength: proofDescription.length,
-      fileCount: fileData.length
-    });
-    
-    // Generate JSON response based on score
-    if (score >= 6) {
-      return {
-        action: "accept_proof",
-        reason: "Proof clearly demonstrates task completion with relevant files and description.",
-        data: {
-          task_id: task.id
-        },
-        isVerified: true
-      };
-    } else {
-      // Determine violations based on what's missing
-      const violations = [];
-      let advice = "Please provide clearer proof of task completion.";
-      
-      if (!hasRelevantFiles) {
-        violations.push("missing_proof");
-        advice = "Upload relevant files that demonstrate task completion.";
-      } else if (!hasRelevantKeywords) {
-        violations.push("wrong_task");
-        advice = "Ensure your proof clearly relates to the specific task requirements.";
-      } else if (proofDescription.length < 20) {
-        violations.push("not_measurable");
-        advice = "Provide a more detailed description of how you completed the task.";
-      } else {
-        violations.push("other");
-        advice = "The proof does not sufficiently demonstrate task completion.";
-      }
-      
-      return {
-        action: "reject_proof",
-        reason: "Proof does not meet verification requirements.",
-        data: {
-          task_id: task.id,
-          violations: violations,
-          advice: advice
-        },
-        isVerified: false
-      };
-    }
-  };
-
   const handleSubmit = async () => {
     if (uploadedFiles.length === 0) {
       toast({
@@ -392,100 +157,32 @@ Based on the task requirements and the provided proof (description + files), det
         description: "AI is verifying your proof submission including uploaded files...",
       });
 
-      const aiResult = await analyzeWithGeminiAI(task.title, task.description, description, uploadedFiles);
-
-      console.log('AI analysis result:', aiResult);
-
-      // Create proof data object
       const proofData = {
         urls: proofUrls,
         description,
-        ai_response: aiResult.action,
-        ai_reason: aiResult.reason,
-        ai_data: aiResult.data,
-        files_analyzed: uploadedFiles.map(f => ({ name: f.file.name, type: f.type, size: f.file.size })),
         submitted_at: new Date().toISOString()
       };
 
-      if (aiResult.isVerified) {
-        const { error: updateError } = await supabase
-          .from('tasks')
-          .update({ 
-            status: 'verified',
-            proof_url: JSON.stringify({
-              ...proofData,
-              verified_at: new Date().toISOString()
-            })
-          })
-          .eq('id', task.id)
-          .eq('user_id', user.id);
+      const { error: updateError } = await supabase
+        .from('tasks')
+        .update({
+          status: 'pending-verification',
+          proof_url: JSON.stringify(proofData)
+        })
+        .eq('id', task.id)
+        .eq('user_id', user.id);
 
-        if (updateError) {
-          console.error('Task update error:', updateError);
-          throw updateError;
-        }
-
-        try {
-          const rewardData = await createReward(task.id);
-          console.log('Reward created successfully:', rewardData);
-
-          toast({
-            title: "🎉 Task Verified Successfully!",
-            description: `AI has verified your proof! Your ${task.due_coins} coins have been returned and a reward coupon created.`,
-          });
-
-          onTaskVerified(task.id, rewardData.coupon_code);
-        } catch (rewardError) {
-          console.error('Reward creation error:', rewardError);
-          
-          toast({
-            title: "Task Verified",
-            description: "Task verified successfully, but there was an issue creating the reward. Please contact support.",
-            variant: "destructive"
-          });
-          
-          onTaskVerified(task.id, '');
-        }
-      } else {
-        // For failed verification, mark as 'pending' so user can try again
-        const { error: updateError } = await supabase
-          .from('tasks')
-          .update({ 
-            status: 'pending',
-            proof_url: JSON.stringify({
-              ...proofData,
-              verification_failed_at: new Date().toISOString()
-            })
-          })
-          .eq('id', task.id)
-          .eq('user_id', user.id);
-
-        if (updateError) {
-          console.error('Task update error:', updateError);
-          throw updateError;
-        }
-
-        // Show more specific feedback based on AI response
-        const aiData = aiResult.data as any;
-        const advice = aiData?.advice || "Please try again with more relevant proof.";
-        const violations = aiData?.violations || [];
-
-        toast({
-          title: "Verification Failed",
-          description: `${aiResult.reason} ${advice}`,
-          variant: "destructive"
-        });
-
-        console.log('Proof verification failed:', {
-          reason: aiResult.reason,
-          violations: violations,
-          advice: advice,
-          description: description,
-          files: uploadedFiles.map(f => f.file.name)
-        });
-
-        return;
+      if (updateError) {
+        console.error('Task update error:', updateError);
+        throw updateError;
       }
+
+      toast({
+        title: "Proof Submitted!",
+        description: "Your proof has been submitted and is pending verification.",
+      });
+
+      onClose();
     } catch (error: any) {
       console.error('Submission error:', error);
       toast({

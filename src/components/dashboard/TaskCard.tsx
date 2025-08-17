@@ -3,9 +3,10 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Clock, CheckCircle, Upload, X, ChevronDown, ChevronUp, Calendar, Target } from 'lucide-react';
+import { Clock, CheckCircle, Upload, X, ChevronDown, ChevronUp, Calendar, Target, Search } from 'lucide-react';
 import { CoinIcon } from '@/components/ui/coin-icon';
 import { Task } from '@/hooks/useTasks';
+import { useRewards } from '@/hooks/useRewards';
 import TaskFileUpload from './TaskFileUpload';
 import ScratchCard from '@/components/ui/scratch-card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -19,11 +20,26 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const [showReward, setShowReward] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const { getRewardByTask } = useRewards();
+
+  useEffect(() => {
+    if (task.status === 'verified' && !showReward) {
+      const fetchReward = async () => {
+        const reward = await getRewardByTask(task.id);
+        if (reward) {
+          setCouponCode(reward.coupon_code);
+          setShowReward(true);
+        }
+      };
+      fetchReward();
+    }
+  }, [task.status, showReward, getRewardByTask, task.id]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending': return 'bg-yellow-500';
       case 'submitted': return 'bg-blue-500';
+      case 'pending-verification': return 'bg-blue-500';
       case 'verified': return 'bg-green-500';
       case 'failed': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -34,6 +50,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     switch (status) {
       case 'pending': return 'border-yellow-200 hover:border-yellow-300';
       case 'submitted': return 'border-blue-200 hover:border-blue-300';
+      case 'pending-verification': return 'border-blue-200 hover:border-blue-300';
       case 'verified': return 'border-green-200 hover:border-green-300 bg-green-50/30';
       case 'failed': return 'border-red-200 hover:border-red-300 bg-red-50/30';
       default: return 'border-gray-200 hover:border-gray-300';
@@ -44,17 +61,13 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     switch (status) {
       case 'pending': return <Clock className="h-4 w-4" />;
       case 'submitted': return <Upload className="h-4 w-4" />;
+      case 'pending-verification': return <Search className="h-4 w-4" />;
       case 'verified': return <CheckCircle className="h-4 w-4" />;
       case 'failed': return <X className="h-4 w-4" />;
       default: return <Clock className="h-4 w-4" />;
     }
   };
 
-  const handleTaskVerified = (taskId: string, generatedCouponCode: string) => {
-    setCouponCode(generatedCouponCode);
-    setShowUpload(false);
-    setShowReward(true);
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -141,13 +154,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Submit Proof
+                  {task.verification_feedback ? 'Resubmit Proof' : 'Submit Proof'}
                 </Button>
               )}
 
               {isOverdue() && task.status === 'pending' && (
                 <div className="text-center py-4 text-red-600">
                   <p className="font-semibold">This task is overdue and will be marked as failed automatically.</p>
+                </div>
+              )}
+
+              {task.verification_feedback && (
+                <div className="text-center py-4 text-orange-600 bg-orange-50 rounded-lg">
+                  <p className="font-semibold">Feedback from AI:</p>
+                  <p className="text-sm">{task.verification_feedback}</p>
                 </div>
               )}
 
@@ -165,11 +185,17 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 </div>
               )}
 
+              {task.status === 'pending-verification' && (
+                <div className="text-center py-4 text-blue-600 bg-blue-50 rounded-lg">
+                  <p className="font-semibold">🔍 Proof Submitted</p>
+                  <p className="text-sm">Your proof is currently being verified by AI.</p>
+                </div>
+              )}
+
               {showUpload && !showReward && (
                 <TaskFileUpload
                   task={task}
                   onClose={() => setShowUpload(false)}
-                  onTaskVerified={handleTaskVerified}
                 />
               )}
 

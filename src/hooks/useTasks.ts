@@ -10,10 +10,11 @@ export interface Task {
   description: string;
   due_date: string;
   due_coins: number;
-  status: 'pending' | 'verified' | 'failed';
+  status: 'pending' | 'verified' | 'failed' | 'pending-verification';
   proof_url?: string;
   created_at: string;
   updated_at: string;
+  verification_feedback?: string;
 }
 
 export const useTasks = () => {
