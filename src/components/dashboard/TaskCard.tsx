@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -67,7 +66,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
       default: return <Clock className="h-4 w-4" />;
     }
   };
-
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -196,6 +194,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 <TaskFileUpload
                   task={task}
                   onClose={() => setShowUpload(false)}
+                  onTaskVerified={() => {
+                    setShowUpload(false);
+                    // The reward will be shown automatically via the useEffect
+                  }}
                 />
               )}
 
