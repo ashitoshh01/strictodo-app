@@ -10,17 +10,43 @@ import { CoinIcon } from '@/components/ui/coin-icon';
 import { useTasks } from '@/hooks/useTasks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOverdueTaskChecker } from '@/hooks/useOverdueTaskChecker';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import UserProfile from '@/components/dashboard/UserProfile';
 import TaskCard from '@/components/dashboard/TaskCard';
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { tasks, loading } = useTasks();
-  const { userProfile } = useAuth();
+  const { tasks, loading, refetch } = useTasks();
+  const { userProfile, user } = useAuth();
+  const { toast } = useToast();
   const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Use the overdue task checker hook
   useOverdueTaskChecker();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('tasks')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
+        (payload) => {
+          if (payload.new.status === 'verified' && payload.old.status !== 'verified') {
+            toast({
+              title: "🎉 Task Verified!",
+              description: `Your task "${payload.new.title}" has been successfully verified.`,
+            });
+          }
+          refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, refetch, toast]);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');

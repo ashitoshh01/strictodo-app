@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Clock, CheckCircle, Upload, X, ChevronDown, ChevronUp, Calendar, Target, Search } from 'lucide-react';
 import { CoinIcon } from '@/components/ui/coin-icon';
 import { Task } from '@/hooks/useTasks';
+import { useRewards } from '@/hooks/useRewards';
 import TaskFileUpload from './TaskFileUpload';
 import ScratchCard from '@/components/ui/scratch-card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -19,6 +20,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
   const [showReward, setShowReward] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [isOpen, setIsOpen] = useState(false);
+  const { getRewardByTask } = useRewards();
+
+  useEffect(() => {
+    if (task.status === 'verified' && !showReward) {
+      const fetchReward = async () => {
+        const reward = await getRewardByTask(task.id);
+        if (reward) {
+          setCouponCode(reward.coupon_code);
+          setShowReward(true);
+        }
+      };
+      fetchReward();
+    }
+  }, [task.status, showReward, getRewardByTask, task.id]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -53,11 +68,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
     }
   };
 
-  const handleTaskVerified = (taskId: string, generatedCouponCode: string) => {
-    setCouponCode(generatedCouponCode);
-    setShowUpload(false);
-    setShowReward(true);
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -144,13 +154,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                   className="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600"
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Submit Proof
+                  {task.verification_feedback ? 'Resubmit Proof' : 'Submit Proof'}
                 </Button>
               )}
 
               {isOverdue() && task.status === 'pending' && (
                 <div className="text-center py-4 text-red-600">
                   <p className="font-semibold">This task is overdue and will be marked as failed automatically.</p>
+                </div>
+              )}
+
+              {task.verification_feedback && (
+                <div className="text-center py-4 text-orange-600 bg-orange-50 rounded-lg">
+                  <p className="font-semibold">Feedback from AI:</p>
+                  <p className="text-sm">{task.verification_feedback}</p>
                 </div>
               )}
 
@@ -179,7 +196,6 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 <TaskFileUpload
                   task={task}
                   onClose={() => setShowUpload(false)}
-                  onTaskVerified={handleTaskVerified}
                 />
               )}
 

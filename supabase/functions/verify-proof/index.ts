@@ -23,11 +23,16 @@ serve(async (req) => {
 
     const response = await openai.chat.completions.create({
       model: "gpt-4-vision-preview",
+      response_format: { type: "json_object" },
       messages: [
+        {
+          role: "system",
+          content: `You are an AI assistant that verifies task proofs. Your response must be a JSON object with two keys: "status" and "reason". The "status" can be "verified" or "failed". The "reason" should be a short explanation for the status. Be very strict. Only approve proofs that are clearly and unambiguously correct.`
+        },
         {
           role: "user",
           content: [
-            { type: "text", text: `Please verify if the following proof is valid for the task: "${task.title}". Task description: "${task.description}". User's description: "${proofDescription}". Please respond with only "verified" or "failed".` },
+            { type: "text", text: `Please verify if the following proof is valid for the task: "${task.title}". Task description: "${task.description}". User's description: "${proofDescription}".` },
             ...proofUrls.map((url: string) => ({ type: "image_url", image_url: { url } })),
           ],
         },
@@ -35,33 +40,34 @@ serve(async (req) => {
       max_tokens: 300,
     });
 
-    const verificationResult = response.choices[0].message.content?.trim().toLowerCase();
+    const verificationResult = JSON.parse(response.choices[0].message.content!);
+    const { status, reason } = verificationResult;
 
-    if (verificationResult === 'verified' || verificationResult === 'failed') {
+    if (status === 'verified') {
       await supabase
         .from('tasks')
-        .update({ status: verificationResult })
+        .update({ status: 'verified', verification_feedback: reason })
         .eq('id', task.id)
 
-      if (verificationResult === 'verified') {
-        // Create reward if verified
-        await supabase.from('rewards').insert([{ task_id: task.id, user_id: task.user_id, amount: task.due_coins, coupon_code: `REWARD-${task.id.substring(0,8)}` }])
-      }
-
-      return new Response(
-        JSON.stringify({ message: `Task ${task.id} updated to ${verificationResult}` }),
-        { headers: { 'Content-Type': 'application/json' } },
-      )
+      // Create reward if verified
+      await supabase.from('rewards').insert([{ task_id: task.id, user_id: task.user_id, amount: task.due_coins, coupon_code: `REWARD-${task.id.substring(0,8)}` }])
     } else {
-      throw new Error(`Unexpected AI response: ${verificationResult}`);
+      await supabase
+        .from('tasks')
+        .update({ status: 'pending', verification_feedback: reason })
+        .eq('id', task.id)
     }
+
+    return new Response(
+      JSON.stringify({ message: `Task ${task.id} updated to ${status}` }),
+      { headers: { 'Content-Type': 'application/json' } },
+    )
 
   } catch (error) {
     console.error('Error verifying proof:', error);
-    // Optionally, update the task to a 'failed' status on error
     await supabase
         .from('tasks')
-        .update({ status: 'failed' })
+        .update({ status: 'pending', verification_feedback: 'Error during AI verification.' })
         .eq('id', task.id)
 
     return new Response(

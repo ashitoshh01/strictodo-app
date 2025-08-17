@@ -14,6 +14,7 @@ export interface Task {
   proof_url?: string;
   created_at: string;
   updated_at: string;
+  verification_feedback?: string;
 }
 
 export const useTasks = () => {

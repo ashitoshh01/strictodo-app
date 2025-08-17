@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useTasks } from '@/hooks/useTasks';
 import { CoinIcon } from '@/components/ui/coin-icon';
+import TimePicker from '@/components/ui/TimePicker';
 
 const AddTask = () => {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ const AddTask = () => {
     title: '',
     description: '',
     dueDate: undefined as Date | undefined,
-    dueTime: '',
+    dueTime: '12:00 AM',
     dueCoins: ''
   });
 
@@ -117,25 +118,34 @@ const AddTask = () => {
       return;
     }
 
-    // Validate time selection
-    if (!validateTime(formData.dueDate, formData.dueTime)) {
-      toast({
-        title: "Error",
-        description: "For today's date, please select a future time",
-        variant: "destructive"
-      });
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
       console.log('Creating task...');
       
       // Combine date and time
-      const [hours, minutes] = formData.dueTime.split(':');
+      const [time, period] = formData.dueTime.split(' ');
+      let [hours, minutes] = time.split(':').map(Number);
+
+      if (period === 'PM' && hours < 12) {
+        hours += 12;
+      }
+      if (period === 'AM' && hours === 12) {
+        hours = 0;
+      }
+
       const dueDateTime = new Date(formData.dueDate);
-      dueDateTime.setHours(parseInt(hours), parseInt(minutes));
+      dueDateTime.setHours(hours, minutes);
+
+      if (dueDateTime < new Date()) {
+        toast({
+          title: "Error",
+          description: "Please select a future time",
+          variant: "destructive"
+        });
+        setIsSubmitting(false);
+        return;
+      }
 
       await createTask({
         title: formData.title,
@@ -262,19 +272,10 @@ const AddTask = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="dueTime">Due Time</Label>
-                    <Input
-                      id="dueTime"
-                      type="time"
-                      min={getMinTimeForDate(formData.dueDate)}
+                    <TimePicker
                       value={formData.dueTime}
-                      onChange={(e) => handleInputChange('dueTime', e.target.value)}
-                      required
+                      onChange={(value) => handleInputChange('dueTime', value)}
                     />
-                    {isDateToday(formData.dueDate) && (
-                      <p className="text-xs text-muted-foreground">
-                        For today's date, select a future time
-                      </p>
-                    )}
                   </div>
                 </div>
 
