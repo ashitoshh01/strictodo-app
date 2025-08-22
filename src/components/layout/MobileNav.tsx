@@ -47,6 +47,13 @@ const MobileNav = ({ isDarkMode }: MobileNavProps) => {
               Add Task
             </Link>
             <Link 
+              to="/shop" 
+              className={`block hover:text-primary transition-colors ${location.pathname.startsWith('/shop') ? 'text-primary' : ''}`}
+              onClick={toggleNav}
+            >
+              Shop
+            </Link>
+            <Link 
               to="/rewards" 
               className={`block hover:text-primary transition-colors ${location.pathname === '/rewards' ? 'text-primary' : ''}`}
               onClick={toggleNav}

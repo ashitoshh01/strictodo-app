@@ -14,6 +14,183 @@ export type Database = {
   }
   public: {
     Tables: {
+      cart_items: {
+        Row: {
+          cart_id: string
+          created_at: string
+          id: string
+          product_id: string
+          qty: number
+          subtotal_inr: number
+          unit_price_inr: number
+          updated_at: string
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+          qty?: number
+          subtotal_inr: number
+          unit_price_inr: number
+          updated_at?: string
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+          qty?: number
+          subtotal_inr?: number
+          unit_price_inr?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cart_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      carts: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          flag_name: string
+          id: string
+          is_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          flag_name: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          flag_name?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          created_at: string
+          discount_due_coins: number
+          id: string
+          items_json: Json
+          payment_reference: string | null
+          payment_status: string
+          shipping_inr: number
+          subtotal_inr: number
+          tax_inr: number
+          total_payable_inr: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          discount_due_coins?: number
+          id?: string
+          items_json: Json
+          payment_reference?: string | null
+          payment_status?: string
+          shipping_inr?: number
+          subtotal_inr: number
+          tax_inr?: number
+          total_payable_inr: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          discount_due_coins?: number
+          id?: string
+          items_json?: Json
+          payment_reference?: string | null
+          payment_status?: string
+          shipping_inr?: number
+          subtotal_inr?: number
+          tax_inr?: number
+          total_payable_inr?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string | null
+          id: string
+          images: string[] | null
+          price_inr: number
+          stock: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          price_inr: number
+          stock?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string | null
+          id?: string
+          images?: string[] | null
+          price_inr?: number
+          stock?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -127,14 +304,61 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_ledger: {
+        Row: {
+          created_at: string
+          delta_coins: number
+          id: string
+          order_id: string | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delta_coins: number
+          id?: string
+          order_id?: string | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delta_coins?: number
+          id?: string
+          order_id?: string | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_ledger_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      calculate_due_coins_usage: {
+        Args: {
+          p_requested_coins?: number
+          p_subtotal_inr: number
+          p_user_balance: number
+        }
+        Returns: Json
+      }
       claim_welcome_bonus: {
         Args: { user_id: string }
         Returns: undefined
+      }
+      get_or_create_cart: {
+        Args: { p_user_id: string }
+        Returns: string
       }
     }
     Enums: {

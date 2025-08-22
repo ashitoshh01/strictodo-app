@@ -64,6 +64,12 @@ const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
                 Add Task
               </Link>
               <Link 
+                to="/shop" 
+                className={`hover:text-primary transition-colors ${location.pathname.startsWith('/shop') ? 'text-primary' : ''}`}
+              >
+                Shop
+              </Link>
+              <Link 
                 to="/rewards" 
                 className={`hover:text-primary transition-colors ${location.pathname === '/rewards' ? 'text-primary' : ''}`}
               >
@@ -120,6 +126,12 @@ const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
                   <Link to="/settings" className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/shop/orders" className="cursor-pointer">
+                    <Trophy className="mr-2 h-4 w-4" />
+                    <span>Orders</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
