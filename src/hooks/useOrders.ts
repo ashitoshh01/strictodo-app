@@ -130,23 +130,32 @@ export const useOrders = () => {
 
         if (order && order.discount_due_coins > 0) {
           // Deduct coins from user balance
-          await supabase
+          const { data: currentProfile } = await supabase
             .from('profiles')
-            .update({
-              due_coins: supabase.sql`due_coins - ${order.discount_due_coins}`,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', user.id);
+            .select('due_coins')
+            .eq('id', user.id)
+            .single();
 
-          // Add to wallet ledger
-          await supabase
-            .from('wallet_ledger')
-            .insert({
-              user_id: user.id,
-              delta_coins: -order.discount_due_coins,
-              reason: 'Order payment - coins redeemed',
-              order_id: orderId
-            });
+          if (currentProfile) {
+            const newBalance = currentProfile.due_coins - order.discount_due_coins;
+            await supabase
+              .from('profiles')
+              .update({
+                due_coins: newBalance,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', user.id);
+
+            // Add to wallet ledger
+            await supabase
+              .from('wallet_ledger')
+              .insert({
+                user_id: user.id,
+                delta_coins: -order.discount_due_coins,
+                reason: 'Order payment - coins redeemed',
+                order_id: orderId
+              });
+          }
         }
       }
 
