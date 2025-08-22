@@ -37,7 +37,13 @@ export const useOrders = () => {
 
       if (error) throw error;
 
-      setOrders(data || []);
+      // Type the data properly to match our Order interface
+      const typedOrders: Order[] = (data || []).map(order => ({
+        ...order,
+        payment_status: order.payment_status as 'pending' | 'paid' | 'failed'
+      }));
+
+      setOrders(typedOrders);
     } catch (error: any) {
       console.error('Error fetching orders:', error);
       toast({
@@ -64,7 +70,7 @@ export const useOrders = () => {
         .eq('id', user.id)
         .single()).data?.due_coins || 0 : 0;
 
-      // Calculate coin usage
+      // Calculate coin usage using the database function
       const { data: coinCalc, error: calcError } = await supabase
         .rpc('calculate_due_coins_usage', {
           p_subtotal_inr: subtotal,
