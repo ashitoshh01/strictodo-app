@@ -20,7 +20,6 @@ const Dashboard = () => {
   const { tasks, loading, refetch } = useTasks();
   const { userProfile, user } = useAuth();
   const { toast } = useToast();
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Use the overdue task checker hook
   useOverdueTaskChecker();
@@ -48,22 +47,6 @@ const Dashboard = () => {
     };
   }, [user, refetch, toast]);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && systemTheme);
-    
-    setIsDarkMode(shouldUseDark);
-    document.documentElement.classList.toggle('dark', shouldUseDark);
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
-
   const taskStats = {
     total: tasks.length,
     pending: tasks.filter(task => task.status === 'pending').length,
@@ -74,7 +57,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+        <Navbar />
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">Loading...</div>
@@ -86,7 +69,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+      <Navbar />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-6xl mx-auto space-y-8">

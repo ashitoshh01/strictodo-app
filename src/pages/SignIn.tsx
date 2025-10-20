@@ -18,6 +18,7 @@ const SignIn = () => {
     password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
@@ -35,11 +36,14 @@ const SignIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
     const { error } = await signIn(formData.email, formData.password);
     
     if (!error) {
       navigate('/dashboard', { replace: true });
+    } else {
+      setError('Invalid email or password. Please try again.');
     }
     
     setIsLoading(false);
@@ -202,6 +206,12 @@ const SignIn = () => {
                   </Link>
                 </div>
               </div>
+
+              {error && (
+                <div className="text-sm text-destructive text-center">
+                  {error}
+                </div>
+              )}
 
               <Button 
                 type="submit" 

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Moon, Sun, User, LogOut, Settings, Trophy } from 'lucide-react';
+import { User, LogOut, Settings, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -13,12 +13,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import MobileNav from './MobileNav';
 
-interface NavbarProps {
-  onToggleTheme?: () => void;
-  isDarkMode?: boolean;
-}
-
-const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
+const Navbar = () => {
   const location = useLocation();
   const { user, signOut, userProfile } = useAuth();
 
@@ -94,17 +89,7 @@ const Navbar = ({ onToggleTheme, isDarkMode = false }: NavbarProps) => {
         {/* Right Side Actions */}
         <div className="flex items-center space-x-4">
           {/* Mobile Navigation */}
-          <MobileNav isDarkMode={isDarkMode} />
-
-          {/* Theme Toggle */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggleTheme}
-            className="w-9 h-9 p-0"
-          >
-            {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </Button>
+          <MobileNav />
 
           {user ? (
             /* User Menu */

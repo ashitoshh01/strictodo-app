@@ -21,7 +21,6 @@ const AddTask = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { createTask } = useTasks();
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -32,21 +31,6 @@ const AddTask = () => {
     dueCoins: ''
   });
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && systemTheme);
-    
-    setIsDarkMode(shouldUseDark);
-    document.documentElement.classList.toggle('dark', shouldUseDark);
-  }, []);
-
-  const toggleTheme = useCallback(() => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  }, [isDarkMode]);
 
   const handleInputChange = useCallback((field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -176,7 +160,7 @@ const AddTask = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+      <Navbar />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto space-y-8">

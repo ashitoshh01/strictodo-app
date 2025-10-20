@@ -20,7 +20,6 @@ const Settings = () => {
   const { toast } = useToast();
   const { user, userProfile } = useAuth();
   const { tasks, refetch } = useTasks();
-  const [isDarkMode, setIsDarkMode] = useState(false);
   
   // Profile form state
   const [fullName, setFullName] = useState('');
@@ -33,13 +32,6 @@ const Settings = () => {
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && systemTheme);
-    
-    setIsDarkMode(shouldUseDark);
-    document.documentElement.classList.toggle('dark', shouldUseDark);
-
     // Initialize form with user data
     if (userProfile?.full_name) {
       setFullName(userProfile.full_name);
@@ -48,13 +40,6 @@ const Settings = () => {
       setReportEmail(user.email);
     }
   }, [userProfile, user]);
-
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   const handleUpdateProfile = async () => {
     if (!user) return;
@@ -123,7 +108,7 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+      <Navbar />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto space-y-8">

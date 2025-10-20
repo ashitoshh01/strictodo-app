@@ -11,30 +11,24 @@ import PricingSection from '@/components/home/PricingSection';
 import CTASection from '@/components/home/CTASection';
 
 const Index = () => {
-  const [isDarkMode, setIsDarkMode] = useState(false);
-
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
+    // Auto-detect system theme
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && systemTheme);
-    
-    setIsDarkMode(shouldUseDark);
-    document.documentElement.classList.toggle('dark', shouldUseDark);
-  }, []);
+    document.documentElement.classList.toggle('dark', systemTheme);
 
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      document.documentElement.classList.toggle('dark', e.matches);
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar 
-        onToggleTheme={toggleTheme} 
-        isDarkMode={isDarkMode} 
-      />
+      <Navbar />
       
       <main>
         <HeroSection />

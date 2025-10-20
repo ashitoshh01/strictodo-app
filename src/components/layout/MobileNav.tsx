@@ -5,11 +5,7 @@ import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface MobileNavProps {
-  isDarkMode: boolean;
-}
-
-const MobileNav = ({ isDarkMode }: MobileNavProps) => {
+const MobileNav = () => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { user } = useAuth();

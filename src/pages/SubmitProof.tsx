@@ -28,7 +28,6 @@ const SubmitProof = () => {
   const { toast } = useToast();
   const { tasks, updateTask } = useTasks();
   const { createReward } = useRewards();
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [proofDescription, setProofDescription] = useState('');
@@ -37,22 +36,6 @@ const SubmitProof = () => {
   const [showReward, setShowReward] = useState(false);
 
   const task = tasks.find(t => t.id === taskId);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldUseDark = savedTheme === 'dark' || (!savedTheme && systemTheme);
-    
-    setIsDarkMode(shouldUseDark);
-    document.documentElement.classList.toggle('dark', shouldUseDark);
-  }, []);
-
-  const toggleTheme = () => {
-    const newTheme = !isDarkMode;
-    setIsDarkMode(newTheme);
-    document.documentElement.classList.toggle('dark', newTheme);
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -195,7 +178,7 @@ const SubmitProof = () => {
   if (!task) {
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+        <Navbar />
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">Task not found</div>
@@ -208,7 +191,7 @@ const SubmitProof = () => {
   if (isSubmitting) {
     return (
       <div className="min-h-screen bg-background text-foreground">
-        <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+        <Navbar />
         <main className="container mx-auto px-4 py-8">
           <div className="flex items-center justify-center h-64">
             <div className="text-center">Processing your submission...</div>
@@ -220,7 +203,7 @@ const SubmitProof = () => {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <Navbar onToggleTheme={toggleTheme} isDarkMode={isDarkMode} />
+      <Navbar />
       
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto space-y-8">
