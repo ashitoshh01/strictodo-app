@@ -151,12 +151,6 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
 
       console.log('Files uploaded successfully:', proofUrls);
 
-      // Perform AI analysis with both description and uploaded files
-      toast({
-        title: "Analyzing with AI",
-        description: "AI is verifying your proof submission including uploaded files...",
-      });
-
       const proofData = {
         urls: proofUrls,
         description,
@@ -178,8 +172,8 @@ const TaskFileUpload: React.FC<TaskFileUploadProps> = ({ task, onClose, onTaskVe
       }
 
       toast({
-        title: "Proof Submitted!",
-        description: "Your proof has been submitted and is pending verification.",
+        title: "Proof Submitted! 🚀",
+        description: "AI is analyzing your proof now. You'll see the result in your dashboard within seconds!",
       });
 
       onClose();

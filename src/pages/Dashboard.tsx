@@ -28,15 +28,38 @@ const Dashboard = () => {
     if (!user) return;
 
     const channel = supabase
-      .channel('tasks')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'tasks', filter: `user_id=eq.${user.id}` },
+      .channel('task-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tasks',
+          filter: `user_id=eq.${user.id}`
+        },
         (payload) => {
-          if (payload.new.status === 'verified' && payload.old.status !== 'verified') {
-            toast({
-              title: "🎉 Task Verified!",
-              description: `Your task "${payload.new.title}" has been successfully verified.`,
-            });
+          console.log('Task update received:', payload);
+          
+          // Show toast notification for verification results
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            const newTask = payload.new as any;
+            const oldTask = payload.old as any;
+            
+            if (newTask.status === 'verified' && oldTask?.status !== 'verified') {
+              toast({
+                title: "Task Verified! ✅",
+                description: newTask.verification_feedback || `Your task "${newTask.title}" has been verified. Coins refunded + reward added!`,
+              });
+            } else if (newTask.status === 'pending' && oldTask?.status === 'pending-verification') {
+              toast({
+                title: "Verification Failed ❌",
+                description: newTask.verification_feedback || "Your proof was not sufficient. Please try again.",
+                variant: "destructive"
+              });
+            }
           }
+          
+          // Refresh tasks to show updated data instantly
           refetch();
         }
       )

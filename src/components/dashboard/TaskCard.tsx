@@ -162,10 +162,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 </div>
               )}
 
-              {task.verification_feedback && (
-                <div className="text-center py-4 text-orange-600 bg-orange-50 rounded-lg">
-                  <p className="font-semibold">Feedback from AI:</p>
-                  <p className="text-sm">{task.verification_feedback}</p>
+              {task.verification_feedback && task.status === 'pending' && (
+                <div className="text-center py-4 text-orange-600 bg-orange-50 dark:bg-orange-950/30 rounded-lg border-2 border-orange-200 dark:border-orange-800">
+                  <p className="font-semibold">💭 AI Feedback:</p>
+                  <p className="text-sm mt-1">{task.verification_feedback}</p>
+                  <p className="text-xs mt-2 text-muted-foreground">Please review and resubmit with better proof</p>
                 </div>
               )}
 
@@ -177,16 +178,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
               )}
 
               {task.status === 'verified' && (
-                <div className="text-center py-4 text-green-600 bg-green-50 rounded-lg">
+                <div className="text-center py-4 text-green-600 bg-green-50 dark:bg-green-950/30 rounded-lg border-2 border-green-200 dark:border-green-800">
                   <p className="font-semibold">✅ Task Verified Successfully!</p>
-                  <p className="text-sm">Your coins have been returned to your account.</p>
+                  {task.verification_feedback && (
+                    <p className="text-sm mt-1 italic">"{task.verification_feedback}"</p>
+                  )}
+                  <p className="text-sm mt-2">Your coins + reward have been added to your account!</p>
                 </div>
               )}
 
               {task.status === 'pending-verification' && (
-                <div className="text-center py-4 text-blue-600 bg-blue-50 rounded-lg">
-                  <p className="font-semibold">🔍 Proof Submitted</p>
-                  <p className="text-sm">Your proof is currently being verified by AI.</p>
+                <div className="text-center py-4 text-blue-600 bg-blue-50 dark:bg-blue-950/30 rounded-lg animate-pulse">
+                  <p className="font-semibold">🤖 AI Verification in Progress...</p>
+                  <p className="text-sm">Your proof is being analyzed. Results will appear in seconds!</p>
                 </div>
               )}
 
