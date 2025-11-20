@@ -110,6 +110,21 @@ export type Database = {
         }
         Relationships: []
       }
+      kv_store_636071f3: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
           created_at: string
@@ -352,14 +367,8 @@ export type Database = {
         }
         Returns: Json
       }
-      claim_welcome_bonus: {
-        Args: { user_id: string }
-        Returns: undefined
-      }
-      get_or_create_cart: {
-        Args: { p_user_id: string }
-        Returns: string
-      }
+      claim_welcome_bonus: { Args: { user_id: string }; Returns: undefined }
+      get_or_create_cart: { Args: { p_user_id: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

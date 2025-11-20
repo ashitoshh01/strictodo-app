@@ -27,10 +27,10 @@ const Index = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground w-full overflow-x-hidden">
       <Navbar />
       
-      <main>
+      <main className="w-full">
         <HeroSection />
         <HowItWorksSection />
         <WhyItWorksSection />

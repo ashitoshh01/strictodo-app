@@ -7,9 +7,9 @@ import ThreeBackground from './ThreeBackground';
 
 const HeroSection = () => {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
+    <section className="relative overflow-hidden bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20 w-full">
       <ThreeBackground />
-      <div className="container mx-auto px-4 py-20 lg:py-32 relative z-10">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-20 lg:py-32 relative z-10 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Text Content */}
           <div className="space-y-8">

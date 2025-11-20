@@ -43,8 +43,8 @@ const FeaturesSection = () => {
   ];
 
   return (
-    <section id="features" className="py-20 bg-background">
-      <div className="container mx-auto px-4">
+    <section id="features" className="py-20 bg-background w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center space-y-4 mb-16">
           <h2 className="text-3xl lg:text-4xl font-bold">Powerful Features</h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
