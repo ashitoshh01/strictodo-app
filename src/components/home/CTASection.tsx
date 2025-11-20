@@ -6,8 +6,8 @@ import { ArrowRight, Target, Trophy } from 'lucide-react';
 
 const CTASection = () => {
   return (
-    <section className="py-20 bg-gradient-to-br from-green-500 to-blue-500 text-white">
-      <div className="container mx-auto px-4">
+    <section className="py-20 bg-gradient-to-br from-green-500 to-blue-500 text-white w-full">
+      <div className="w-full px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
         <div className="text-center space-y-8 max-w-4xl mx-auto">
           <div className="space-y-4">
             <h2 className="text-3xl lg:text-5xl font-bold">
